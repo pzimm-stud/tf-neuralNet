@@ -15,10 +15,15 @@ optimization_algo = tf.train.AdamOptimizer
 learning_rate = None
 
 #Define Parameters for the data
-filename = 'waterset.xlsx'
-feature_indices = ['heat_flux_local_new', 'pressure_new', 'enthalpy_local_new', 'mass_flux_new', 'diameter_new'] #Define the feature column names
-label_indices = ['walltemp_new'] #define the label column names
+#filename = 'waterset.xlsx'
+#feature_indices = ['heat_flux_local_new', 'pressure_new', 'enthalpy_local_new', 'mass_flux_new', 'diameter_new'] #Define the feature column names
+#label_indices = ['walltemp_new'] #define the label column names
 
+#Load Data from original Waterset
+filename = 'DataWP5_2SHEET.xls'
+feature_indices = ['Heat Flux q_local (new)', 'Enthalpy local h_local (new)', 'Pressure p (new)', 'Mass Flux G (new)', 'Diameter Inside d_in (new)']
+label_indices = [ 'Wall Temperature T_wall (new)' ]
+data = pd.read_excel("DataWP5_2SHEET.xls", sheet_name="Filtered")
 
 #Import and preprocess the data (as DataFrame):
 trainset, testset = data.loadAndPrepareDF(filename=filename, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
