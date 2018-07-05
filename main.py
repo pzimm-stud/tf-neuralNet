@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import neuralNet_class as neuralNet
-import import_data as data
+import import_data as prepdata
 
 #Define the structure of the neuralNet
 n_features = 5
@@ -26,7 +26,7 @@ label_indices = [ 'Wall Temperature T_wall (new)' ]
 data = pd.read_excel("DataWP5_2SHEET.xls", sheet_name="Filtered")
 
 #Import and preprocess the data (as DataFrame):
-trainset, testset = data.loadAndPrepareDF(filename=filename, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
+trainset, testset = prepdata.PrepareDF(dataDF=data, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
 
 #Import and preprocess the data (as numpy array):
 
