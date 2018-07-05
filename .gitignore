@@ -1,0 +1,5 @@
+#Ignore any Excel File! sH2O is not yet published!
+*.xlsx
+*.xls
+*.csv
+__pycache__
