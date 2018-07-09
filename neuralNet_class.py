@@ -101,6 +101,7 @@ class neuralnet:
 
             pos = [0]
             lossmon = [0]
+            aadmon = [0]
             zaehl = 0
 
             for epoch in range(max_epochs):
@@ -143,6 +144,7 @@ class neuralnet:
                     if(epoch == 10):
                         pos = [0]
                         lossmon = [epoch_loss]
+                        aadmon = [aadepc]
 
                     print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
 
@@ -150,8 +152,10 @@ class neuralnet:
                         zaehl+=10
                         pos.append(zaehl)
                         lossmon.append(epoch_loss)
+                        aadmon.append(aadepc)
 
                     self.lossprint = (pos,lossmon)
+                    self.aadprint = (pos,aadmon)
 
 
 
@@ -168,6 +172,7 @@ class neuralnet:
 
         pos = [0]
         lossmon = [0]
+        aadmon = [0]
         zaehl = 0
 
         for epoch in range(max_epochs):
@@ -210,13 +215,17 @@ class neuralnet:
                 if(epoch == 10):
                     pos = [0]
                     lossmon = [epoch_loss]
+                    aadmon = [aad]
+
                 print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}%'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad) )
                 if((epoch % 10) == 0):
                     zaehl+=10
                     pos.append(zaehl)
                     lossmon.append(epoch_loss)
+                    aadmon.append(aad)
 
                 self.lossprint = (pos,lossmon)
+                self.aadprint = (pos,aad)
 
     def predictNP(self, testfeatures):
         return  self.prediction.eval(feed_dict={self.x: testfeatures}, session=self.sess)
