@@ -57,6 +57,7 @@ for rand_dataset in randomize_dset:
 
         water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
         water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate)
+        water_nn.initializeSession()
         water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=5000, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=rand_dataset, PLOTINTERACTIVE = False, STATS=True)
 
         delta_t = time.time() - starttime
@@ -116,6 +117,8 @@ for rand_dataset in randomize_dset:
         plt.legend(loc=2)
         plt.savefig(fname=(directory + '/temp-dns-vs-dnn'))
         plt.gcf().clear()
+
+        water_nn.closeSession()
 
 
 
