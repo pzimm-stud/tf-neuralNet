@@ -42,8 +42,8 @@ testlabels = testset[label_indices].values
 
 #for i in range(4,6,1):
     #for j in range(100,500,50):
-randomize_dset = (False, True)
-b_size_test = (16, 32, 64, 128, 256, 512)
+randomize_dset = (True,)
+b_size_test = (32, 64, 128, 256, 512)
 
 for rand_dataset in randomize_dset:
     for batch_size in b_size_test:
@@ -56,9 +56,9 @@ for rand_dataset in randomize_dset:
         starttime = time.time()
 
         water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-        water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate)
+        water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, init_method = 1, init_stddev = 1)
         water_nn.initializeSession()
-        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=5000, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=rand_dataset, PLOTINTERACTIVE = False, STATS=True)
+        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=3000, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=rand_dataset, PLOTINTERACTIVE = False, STATS=True)
 
         delta_t = time.time() - starttime
 
