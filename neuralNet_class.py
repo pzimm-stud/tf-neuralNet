@@ -95,9 +95,6 @@ class neuralnet:
         #Hier auf jeden Fall überprüfungen einbauen ob das set die anzahl der features hat, labels muss auch passen und ob trainlabels und trainfeatures gleich lang sind
 
         if (RUNCONDITIONS ):
-            #with tf.Session() as self.sess:
-            self.sess = tf.Session()
-            self.sess.run(tf.global_variables_initializer())
 
             pos = [0]
             lossmon = [0]
@@ -166,10 +163,6 @@ class neuralnet:
 
         #Methode nimmt pandas DataFrame!
 
-        #with tf.Session() as self.sess:
-        self.sess = tf.Session()
-        self.sess.run(tf.global_variables_initializer())
-
         pos = [0]
         lossmon = [0]
         aadmon = [0]
@@ -234,7 +227,12 @@ class neuralnet:
     def predictDF(self, testset, feature_labels):
         return  self.prediction.eval(feed_dict={self.x: testset[feature_labels].values }, session=self.sess)
 
+    def initializeSession(self):
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
+    def closeSession(self):
+        self.sess.close()
 
         #Evtl. saver implementieren inn eigene Methode! Save und resume! schauen wie es mit tf.train.Saver() funktionier wo gehört der hin! wie ist es mit constructor wenn der differiert?
     def saveToDisk (self, path):
