@@ -128,12 +128,12 @@ class neuralnet:
                         epoch_loss += c
 
                     if ((traintemp.shape[0] % batch_size) != 0): #iterate over last examples smaller than batch size
-                        epoch_x = traintemp[i*batch_size : (i+1)*batch_size ,:self.n_features]
-                        epoch_y = traintemp[i*batch_size : (i+1)*batch_size ,self.n_features :]
+                        epoch_x = traintemp[int( (i+1)*batch_size : ,:self.n_features]
+                        epoch_y = traintemp[int( (i+1)*batch_size : ,self.n_features :]
                         _, c, aad = self.sess.run([self.optimizer, self.cost, self.aad], feed_dict = {self.x: epoch_x, self.y: epoch_y})
                         epoch_loss += c
 
-                    #After last minibatch iteration calculate aad over the whole testset!
+                    #After last minibatch iteration calculate aad over the whole trainset!
                     aadepc = self.sess.run([self.aad], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})
 
 
