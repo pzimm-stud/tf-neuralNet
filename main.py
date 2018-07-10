@@ -10,8 +10,8 @@ import time
 #Define the structure of the neuralNet
 n_features = 5
 n_labels = 1
-#layout = (250,250,250,250)
-#actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
+layout = (350,350,350,350,350)
+actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
 optimization_algo = tf.train.AdamOptimizer
 #optimization_algo = tf.train.GradientDescentOptimizer
 learning_rate = None
@@ -40,33 +40,40 @@ testlabels = testset[label_indices].values
 
 
 
-for i in range(2,6,1):
-    for j in range(100,500,50):
-        layout = [] #jetzt dürfen es keine tuples mehr sein!
-        actfunct = []
-        for temp in range(0,i,1):
-            layout.append(j)
-            actfunct.append(tf.nn.sigmoid)
+#for i in range(4,6,1):
+    #for j in range(100,500,50):
+randomize_dset = (False, True)
+b_size_test = (16, 32, 64, 128, 256, 512)
+
+for rand_dataset in randomize_dset:
+    for batch_size in b_size_test:
+        #layout = [] #jetzt dürfen es keine tuples mehr sein!
+        #actfunct = []
+        #for temp in range(0,i,1):
+        #    layout.append(j)
+        #    actfunct.append(tf.nn.sigmoid)
 
         starttime = time.time()
 
         water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
         water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate)
-        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=5000, stop_error=None, batch_size=64, RANDOMIZE_DATASET=False, PLOTINTERACTIVE = False, STATS=True)
+        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=5000, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=rand_dataset, PLOTINTERACTIVE = False, STATS=True)
 
         delta_t = time.time() - starttime
 
-        directory = './sim-i-' + str(i) + '-j-' + str(j)
+        directory = './sim-bsize-' + str(batch_size) + '-rand-' + str(rand_dataset)
         if not os.path.exists(directory):
             os.makedirs(directory)
 
         with open(directory + '/config.txt', 'w') as configfile:
             configfile.write('actfunct : sigmoid (hardcoded)\n')
-            configfile.write('layout: ' + str(i) + ' hidden layers\n')
-            configfile.write('Each layer with ' + str(j) + ' neurons\n')
+            configfile.write('layout: 5 hidden layers\n')
+            configfile.write('Each layer with 350 neurons\n')
             configfile.write('Optimization algo: AdamOptimizer (hardcoded)\n')
             configfile.write('learning rate: None\n')
             configfile.write('Time used for Training:' + str(delta_t) + '\n')
+            configfile.write('Batch Size:' + str(batch_size) + '\n')
+            configfile.write('Randomize Dataset:' + str(rand_dataset) + '\n')
 
         plt.plot(water_nn.lossprint[0], water_nn.lossprint[1])
         plt.title('Loss over Epochs')
