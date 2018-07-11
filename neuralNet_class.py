@@ -32,12 +32,22 @@ class neuralnet:
             print('Error, number of hidden layers must be greater than 1!')
 
 
-    def build(self, optimization_algo, learning_rate, init_method = 1, init_stddev = 1):
+    def build(self, optimization_algo, learning_rate, beta = 0, init_method = 1, init_stddev = 1, decay_steps = None, decay_rate = None):
         self.x = tf.placeholder('float',[None, self.n_features])
         self.y = tf.placeholder('float',[None, self.n_labels])
         self.layerdict = {}
         self.optimization_algo = optimization_algo
-        self.learning_rate = learning_rate
+
+        if ( (decay_steps == None) or (decay_rate == None) ):
+            USEDECAY = False
+        elif ( ( (decay_steps > 0. ) and (decay_rate > 0.) )):
+            USEDECAY = True
+
+        if (USEDECAY):
+            self.global_step = tf.Variable(0, trainable=False)
+            self.learning_rate = tf.train.exponential_decay(learning_rate=learning_rate, global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate, staircase=True )
+        else:
+            self.learning_rate = learning_rate
 
         for layer in range(len(self.layout)):
             if(layer==0): #first layer needs n_features as first dimension
@@ -76,11 +86,11 @@ class neuralnet:
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
                 elif ( init_method == 5):
-                    init_stddev = 1/( np.sqrt(self.n_features))
+                    init_stddev = 1./( np.sqrt(self.n_features))
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
                 elif ( init_method == 6):
-                    init_stddev = ( np.sqrt(6)) / ( np.sqrt(self.n_features + self.layout[layer]) )
+                    init_stddev = ( np.sqrt( 6. / ( self.n_features + self.layout[layer]) ) )
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
 
@@ -99,11 +109,11 @@ class neuralnet:
             self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
         elif ( init_method == 5):
-            init_stddev = 1/( np.sqrt(self.n_features))
+            init_stddev = 1./( np.sqrt(self.n_features))
             self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
         elif ( init_method == 6):
-            init_stddev = ( np.sqrt(6)) / ( np.sqrt(self.n_features + self.layout[layer]) )
+            init_stddev = ( np.sqrt( 2. / ( self.n_features + self.layout[layer]) ) )
             self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
 
@@ -127,10 +137,16 @@ class neuralnet:
             return output
 
         self.prediction = layeroperations()
-        self.cost = tf.reduce_mean(tf.pow((self.prediction-self.y),2)) #also possible: tf.square(self.prediction-self.y)
+        #self.cost = tf.reduce_mean(tf.pow((self.prediction-self.y),2)) #also possible: tf.square(self.prediction-self.y)
+        self.regularizer = 0
+        for layer in range(len(self.layout)):
+            self.regularizer += tf.nn.l2_loss( self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] )
+        self.cost = ( tf.reduce_mean(tf.pow((self.prediction-self.y),2)) + self.regularizer * beta  )
         self.aad = tf.reduce_mean(tf.abs((self.prediction-self.y))/self.y) * 100
         if (self.learning_rate == None):
             self.optimizer = self.optimization_algo().minimize(self.cost)
+        elif(USEDECAY):
+            self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.cost, global_step=self.global_step)
         else:
             self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.cost)
 
@@ -187,21 +203,21 @@ class neuralnet:
 
                     #After last minibatch iteration calculate aad over the whole trainset!
                     aadepc = self.sess.run([self.aad], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})
-
+                    print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess))) #Only for debugging decayed learning rate!
 
                 else:
                     print('Error! batch_size must either be None or greater 0')
 
                 if (STATS):
-                    if(epoch == 10):
+                    if(epoch == 5):
                         pos = [0]
                         lossmon = [epoch_loss]
                         aadmon = [aadepc]
 
                     print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
 
-                    if((epoch % 10) == 0):
-                        zaehl+=10
+                    if((epoch % 5) == 0):
+                        zaehl+=5
                         pos.append(zaehl)
                         lossmon.append(epoch_loss)
                         aadmon.append(aadepc)
@@ -260,14 +276,14 @@ class neuralnet:
                 print('Error! batch_size must either be None or greater 0')
 
             if (STATS):
-                if(epoch == 10):
+                if(epoch == 5):
                     pos = [0]
                     lossmon = [epoch_loss]
                     aadmon = [aad]
 
                 print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}%'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad) )
-                if((epoch % 10) == 0):
-                    zaehl+=10
+                if((epoch % 5) == 0):
+                    zaehl+=5
                     pos.append(zaehl)
                     lossmon.append(epoch_loss)
                     aadmon.append(aad)
