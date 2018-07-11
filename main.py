@@ -16,12 +16,14 @@ optimization_algo = tf.train.AdamOptimizer
 beta = 0.005
 #optimization_algo = tf.train.GradientDescentOptimizer
 #learning_rate = None
-learning_rate = 0.1
-decay_steps = 10000
-decay_rate = 0.95
+#learning_rate = 0.1
+#decay_steps = 10000
+decay_steps = None
+#decay_rate = 0.95
+decay_rate = None
 init_method = 5
 init_stddev = 0.5
-#batch_size=128
+batch_size=128
 
 #Define Parameters for the data
 #filename = 'waterset.xlsx'
@@ -49,14 +51,20 @@ testlabels = testset[label_indices].values
 
 #for i in range(4,6,1):
     #for j in range(100,500,50):
-randomize_dset = (True, False)
-b_size_test = (32, 64, 128, 256)
+#randomize_dset = (True,)
+#b_size_test = (32, 64, 128, 256)
+lrate_test = ( 0.01, 0.001, 0.0005)
+opti_test = ( tf.train.GradientDescentOptimizer, tf.train.AdamOptimizer, tf.train.AdagradOptimizer, tf.train.MomentumOptimizer, tf.train.RMSPropOptimizer)
 #stddevtpl = (0.01, 0.1, 0.5, 1)
 
-for rand_dataset in randomize_dset:
+#for rand_dataset in randomize_dset:
+for optimization_algo in opti_test:
 #for init_stddev in stddevtpl:
 #    for init_method in range(1,7,1):
-    for batch_size in b_size_test:
+    #for batch_size in b_size_test:
+    i=0
+    for learning_rate in lrate_test:
+        i +=1
         #layout = [] #jetzt dürfen es keine tuples mehr sein!
         #actfunct = []
         #for temp in range(0,i,1):
@@ -66,13 +74,13 @@ for rand_dataset in randomize_dset:
         starttime = time.time()
 
         water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-        water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, init_method = init_method, init_stddev = init_stddev, decay_steps = decay_steps, decay_rate = decay_rate)
+        water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=0, init_method = init_method, init_stddev = init_stddev, decay_steps = decay_steps, decay_rate = decay_rate)
         water_nn.initializeSession()
-        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=1500, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=rand_dataset, PLOTINTERACTIVE = False, STATS=True)
+        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=1500, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
 
         delta_t = time.time() - starttime
 
-        directory = './sim-bsize-' + str(batch_size) + '-rand-' + str(rand_dataset)
+        directory = './sim-optimizer-' + str(i) + '-lrate-' + str(learning_rate).replace('.', '_')
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -80,11 +88,11 @@ for rand_dataset in randomize_dset:
             configfile.write('actfunct : sigmoid (hardcoded)\n')
             configfile.write('layout: 5 hidden layers\n')
             configfile.write('Each layer with 350 neurons\n')
-            configfile.write('Optimization algo: AdamOptimizer (hardcoded)\n')
-            configfile.write('learning rate: None\n')
+            configfile.write('Optimization algo: ' + str(optimization_algo) + '\n')
+            configfile.write('learning rate: ' + str(learning_rate) + '\n')
             configfile.write('Time used for Training:' + str(delta_t) + '\n')
             configfile.write('Batch Size:' + str(batch_size) + '\n')
-            configfile.write('Randomize Dataset: ' + str(rand_dataset) + '\n')
+            configfile.write('Randomize Dataset: True\n')
 
         plt.plot(water_nn.lossprint[0], water_nn.lossprint[1])
         plt.title('Loss over Epochs')

@@ -203,7 +203,7 @@ class neuralnet:
 
                     #After last minibatch iteration calculate aad over the whole trainset!
                     aadepc = self.sess.run([self.aad], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})
-                    print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess))) #Only for debugging decayed learning rate!
+                    #print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess))) #Only for debugging decayed learning rate!
 
                 else:
                     print('Error! batch_size must either be None or greater 0')
