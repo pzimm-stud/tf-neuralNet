@@ -21,14 +21,14 @@ class neuralnet:
         self.n_labels = n_labels
         self.layout = layout
         self.actfunct = actfunct
-        self.CONSISTENT_LAYERS = (len(layout) == len(actfunct))
-        self.HL_GREATER_1 = (len(layout) >1)
-        self.RUNCONDITIONS = self.CONSISTENT_LAYERS & self.HL_GREATER_1
+        CONSISTENT_LAYERS = (len(layout) == len(actfunct))
+        HL_GREATER_1 = (len(layout) >1)
+        RUNCONDITIONS = CONSISTENT_LAYERS & HL_GREATER_1
 
-        if not (self.CONSISTENT_LAYERS):
+        if not (CONSISTENT_LAYERS):
             print('Error! len(actfunct) != len(layers). Aborting!')
 
-        if not (self.HL_GREATER_1):
+        if not (HL_GREATER_1):
             print('Error, number of hidden layers must be greater than 1!')
 
 
@@ -39,11 +39,11 @@ class neuralnet:
         self.optimization_algo = optimization_algo
 
         if ( (decay_steps == None) or (decay_rate == None) ):
-            USEDECAY = False
+            self.USEDECAY = False
         elif ( ( (decay_steps > 0. ) and (decay_rate > 0.) )):
-            USEDECAY = True
+            self.USEDECAY = True
 
-        if (USEDECAY):
+        if (self.USEDECAY):
             self.global_step = tf.Variable(0, trainable=False)
             self.learning_rate = tf.train.exponential_decay(learning_rate=learning_rate, global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate, staircase=True )
         else:
@@ -145,7 +145,7 @@ class neuralnet:
         self.aad = tf.reduce_mean(tf.abs((self.prediction-self.y))/self.y) * 100
         if (self.learning_rate == None):
             self.optimizer = self.optimization_algo().minimize(self.cost)
-        elif(USEDECAY):
+        elif(self.USEDECAY):
             self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.cost, global_step=self.global_step)
         else:
             self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.cost)
@@ -203,7 +203,8 @@ class neuralnet:
 
                     #After last minibatch iteration calculate aad over the whole trainset!
                     aadepc = self.sess.run([self.aad], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})
-                    #print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess))) #Only for debugging decayed learning rate!
+                    if (self.USEDECAY):
+                        print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess)))
 
                 else:
                     print('Error! batch_size must either be None or greater 0')
@@ -271,6 +272,8 @@ class neuralnet:
 
                 #After last minibatch iteration calculate aad over the whole testset!
                 aad = self.sess.run([self.aad], feed_dict = {self.x : traintemp[feature_indices].values, self.y: traintemp[label_indices].values})
+                if (self.USEDECAY):
+                    print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess))) 
 
             else:
                 print('Error! batch_size must either be None or greater 0')
