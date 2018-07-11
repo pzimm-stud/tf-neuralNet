@@ -31,24 +31,8 @@ class neuralnet:
         if not (HL_GREATER_1):
             print('Error, number of hidden layers must be greater than 1!')
 
-
-    def build(self, optimization_algo, learning_rate, beta = 0, init_method = 1, init_stddev = 1, decay_steps = None, decay_rate = None):
-        self.x = tf.placeholder('float',[None, self.n_features])
-        self.y = tf.placeholder('float',[None, self.n_labels])
+    def initialize (self, init_method = 1, init_stddev = 1):
         self.layerdict = {}
-        self.optimization_algo = optimization_algo
-
-        if ( (decay_steps == None) or (decay_rate == None) ):
-            self.USEDECAY = False
-        elif ( ( (decay_steps > 0. ) and (decay_rate > 0.) )):
-            self.USEDECAY = True
-
-        if (self.USEDECAY):
-            self.global_step = tf.Variable(0, trainable=False)
-            self.learning_rate = tf.train.exponential_decay(learning_rate=learning_rate, global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate, staircase=True )
-        else:
-            self.learning_rate = learning_rate
-
         for layer in range(len(self.layout)):
             if(layer==0): #first layer needs n_features as first dimension
                 if ( init_method == 1):
@@ -117,31 +101,47 @@ class neuralnet:
             self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
 
-        def layeroperations():
-            for layer in range(len(self.layout)):
-                if(layer==0): #first layer needs n_features as first dimension
-                    #templayer[layer] = tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                    #templayer[layer] = self.actfunct[layer](templayer[layer])
-                    templayer = tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                    templayer = self.actfunct[layer](templayer)
 
-                else:
-                    #templayer[layer] = tf.add(tf.matmul( templayer[layer-1], self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                    #templayer[layer] = self.actfunct[layer](templayer[layer])
-                    templayer = tf.add(tf.matmul( templayer, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                    templayer = self.actfunct[layer](templayer)
+    def build(self, optimization_algo, learning_rate, beta = 0, decay_steps = None, decay_rate = None):
+        self.x = tf.placeholder('float',[None, self.n_features])
+        self.y = tf.placeholder('float',[None, self.n_labels])
+        self.optimization_algo = optimization_algo
+        self.beta = beta
 
-            output = tf.add(tf.matmul(templayer, self.layerdict['output-weights']), self.layerdict['output-biases'])
-            #output = tf.add(tf.matmul(templayer[len(layout)-1], layerdict['output-weights']), layerdict['output-biases'])
+        if ( (decay_steps == None) or (decay_rate == None) ):
+            self.USEDECAY = False
+        elif ( ( (decay_steps > 0. ) and (decay_rate > 0.) )):
+            self.USEDECAY = True
 
-            return output
+        if (self.USEDECAY):
+            self.global_step = tf.Variable(0, trainable=False)
+            self.learning_rate = tf.train.exponential_decay(learning_rate=learning_rate, global_step=self.global_step, decay_steps=decay_steps, decay_rate=decay_rate, staircase=True )
+        else:
+            self.learning_rate = learning_rate
 
-        self.prediction = layeroperations()
+
+    def layeroperations(self):
+        for layer in range(len(self.layout)):
+            if(layer==0): #first layer needs n_features as first dimension
+                #templayer[layer] = tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
+                #templayer[layer] = self.actfunct[layer](templayer[layer])
+                templayer = tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
+                templayer = self.actfunct[layer](templayer)
+
+            else:
+                #templayer[layer] = tf.add(tf.matmul( templayer[layer-1], self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
+                #templayer[layer] = self.actfunct[layer](templayer[layer])
+                templayer = tf.add(tf.matmul( templayer, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
+                templayer = self.actfunct[layer](templayer)
+
+        self.prediction = tf.add(tf.matmul(templayer, self.layerdict['output-weights']), self.layerdict['output-biases'])
+        #output = tf.add(tf.matmul(templayer[len(layout)-1], layerdict['output-weights']), layerdict['output-biases'])
+
         #self.cost = tf.reduce_mean(tf.pow((self.prediction-self.y),2)) #also possible: tf.square(self.prediction-self.y)
         self.regularizer = 0
         for layer in range(len(self.layout)):
             self.regularizer += tf.nn.l2_loss( self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] )
-        self.cost = ( tf.reduce_mean(tf.pow((self.prediction-self.y),2)) + self.regularizer * beta  )
+        self.cost = ( tf.reduce_mean(tf.pow((self.prediction-self.y),2)) + self.regularizer * self.beta  )
         self.aad = tf.reduce_mean(tf.abs((self.prediction-self.y))/self.y) * 100
         if (self.learning_rate == None):
             self.optimizer = self.optimization_algo().minimize(self.cost)
@@ -150,8 +150,6 @@ class neuralnet:
         else:
             self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.cost)
 
-
-        print('Built neural net!')
 
         #Methode erweitern damit noch drittes set verwendet wird und trainieren endet wenn error unter stop_error
     def trainNP(self, trainfeatures, trainlabels, max_epochs, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
@@ -167,6 +165,7 @@ class neuralnet:
 
         if (RUNCONDITIONS ):
 
+            self.layeroperations()
             pos = [0]
             lossmon = [0]
             aadmon = [0]
@@ -234,7 +233,7 @@ class neuralnet:
         CONSISTENT_TYPE = (type(trainsetDF).__module__ == 'pandas.core.frame' )
 
         #Methode nimmt pandas DataFrame!
-
+        self.layeroperations()
         pos = [0]
         lossmon = [0]
         aadmon = [0]
@@ -273,7 +272,7 @@ class neuralnet:
                 #After last minibatch iteration calculate aad over the whole testset!
                 aad = self.sess.run([self.aad], feed_dict = {self.x : traintemp[feature_indices].values, self.y: traintemp[label_indices].values})
                 if (self.USEDECAY):
-                    print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess))) 
+                    print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess)))
 
             else:
                 print('Error! batch_size must either be None or greater 0')
