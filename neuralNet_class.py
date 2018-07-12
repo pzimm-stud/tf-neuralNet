@@ -121,21 +121,15 @@ class neuralnet:
 
 
     def layeroperations(self):
-        for layer in range(len(self.layout)):
-            if(layer==0): #first layer needs n_features as first dimension
-                #templayer[layer] = tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                #templayer[layer] = self.actfunct[layer](templayer[layer])
-                templayer = tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                templayer = self.actfunct[layer](templayer)
+        templayer = []
+        for layernum in range(len(self.layout)):
+            if(layernum==0): #first layer needs n_features as first dimension
+                templayer.append( self.actfunct[layernum]( tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ) )
 
             else:
-                #templayer[layer] = tf.add(tf.matmul( templayer[layer-1], self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                #templayer[layer] = self.actfunct[layer](templayer[layer])
-                templayer = tf.add(tf.matmul( templayer, self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ])
-                templayer = self.actfunct[layer](templayer)
+                templayer.append( self.actfunct[layernum]( tf.add(tf.matmul( templayer[layernum-1], self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ) )
 
-        self.prediction = tf.add(tf.matmul(templayer, self.layerdict['output-weights']), self.layerdict['output-biases'])
-        #output = tf.add(tf.matmul(templayer[len(layout)-1], layerdict['output-weights']), layerdict['output-biases'])
+        self.prediction = tf.add(tf.matmul(templayer[layernum], self.layerdict['output-weights']), self.layerdict['output-biases'])
 
         #self.cost = tf.reduce_mean(tf.pow((self.prediction-self.y),2)) #also possible: tf.square(self.prediction-self.y)
         self.regularizer = 0
@@ -165,10 +159,10 @@ class neuralnet:
 
         if (RUNCONDITIONS ):
 
-            self.layeroperations()
             pos = [0]
             lossmon = [0]
             aadmon = [0]
+            learnmon = [0]
             zaehl = 0
 
             for epoch in range(max_epochs):
@@ -213,6 +207,7 @@ class neuralnet:
                         pos = [0]
                         lossmon = [epoch_loss]
                         aadmon = [aadepc]
+                        learnmon = [self.learning_rate.eval(session=self.sess)]
 
                     print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
 
@@ -221,9 +216,11 @@ class neuralnet:
                         pos.append(zaehl)
                         lossmon.append(epoch_loss)
                         aadmon.append(aadepc)
+                        learnmon.append(self.learning_rate.eval(session=self.sess))
 
                     self.lossprint = (pos,lossmon)
                     self.aadprint = (pos,aadmon)
+                    self.learnprint = (pos,learnmon)
 
 
 
@@ -233,10 +230,10 @@ class neuralnet:
         CONSISTENT_TYPE = (type(trainsetDF).__module__ == 'pandas.core.frame' )
 
         #Methode nimmt pandas DataFrame!
-        self.layeroperations()
         pos = [0]
         lossmon = [0]
         aadmon = [0]
+        learnmon = [0]
         zaehl = 0
 
         for epoch in range(max_epochs):
@@ -282,6 +279,7 @@ class neuralnet:
                     pos = [0]
                     lossmon = [epoch_loss]
                     aadmon = [aad]
+                    learnmon = [self.learning_rate.eval(session=self.sess)]
 
                 print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}%'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad) )
                 if((epoch % 5) == 0):
@@ -289,9 +287,11 @@ class neuralnet:
                     pos.append(zaehl)
                     lossmon.append(epoch_loss)
                     aadmon.append(aad)
+                    learnmon.append(self.learning_rate.eval(session=self.sess))
 
                 self.lossprint = (pos,lossmon)
                 self.aadprint = (pos,aad)
+                self.learnprint = (pos,learnmon)
 
     def predictNP(self, testfeatures):
         return  self.prediction.eval(feed_dict={self.x: testfeatures}, session=self.sess)
