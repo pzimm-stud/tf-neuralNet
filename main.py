@@ -13,12 +13,12 @@ n_labels = 1
 layout = (350,350,350,350,350)
 actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
 optimization_algo = tf.train.AdamOptimizer
-beta = 0.005
+beta = 0.01
 #optimization_algo = tf.train.GradientDescentOptimizer
 #learning_rate = None
-#learning_rate = 0.1
+learning_rate = 0.001
 #decay_steps = 10000
-decay_steps = None
+#decay_steps = None
 #decay_rate = 0.95
 decay_rate = None
 init_method = 5
@@ -53,18 +53,23 @@ testlabels = testset[label_indices].values
     #for j in range(100,500,50):
 #randomize_dset = (True,)
 #b_size_test = (32, 64, 128, 256)
-lrate_test = ( 0.01, 0.001, 0.0005)
-opti_test = ( tf.train.GradientDescentOptimizer, tf.train.AdamOptimizer, tf.train.AdagradOptimizer, tf.train.MomentumOptimizer, tf.train.RMSPropOptimizer)
+#lrate_test = ( 0.01, 0.001, 0.0005, 0.00001)
+#opti_test = ( tf.train.AdamOptimizer, tf.train.AdagradOptimizer, tf.train.MomentumOptimizer, tf.train.RMSPropOptimizer)
 #stddevtpl = (0.01, 0.1, 0.5, 1)
-
+#beta_test = (0.01, 0.005, 0.001, 0.0005, 0.0001)
+decaysteps_test = (100, 1000, 10000)
+decayrate_test = (0.98, 0.96, 0.94, 0.92)
+for decay_steps in decaysteps_test:
+#i=0
 #for rand_dataset in randomize_dset:
-for optimization_algo in opti_test:
+#for optimization_algo in opti_test:
+#for betaval in beta_test:
 #for init_stddev in stddevtpl:
 #    for init_method in range(1,7,1):
     #for batch_size in b_size_test:
-    i=0
-    for learning_rate in lrate_test:
-        i +=1
+    for decay_rate in decayrate_test:
+    #i +=1
+    #for learning_rate in lrate_test:
         #layout = [] #jetzt dürfen es keine tuples mehr sein!
         #actfunct = []
         #for temp in range(0,i,1):
@@ -74,13 +79,15 @@ for optimization_algo in opti_test:
         starttime = time.time()
 
         water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-        water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=0, init_method = init_method, init_stddev = init_stddev, decay_steps = decay_steps, decay_rate = decay_rate)
+        water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate)
+        water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
+        water_nn.layeroperations()
         water_nn.initializeSession()
-        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=1500, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=2000, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
 
         delta_t = time.time() - starttime
 
-        directory = './sim-optimizer-' + str(i) + '-lrate-' + str(learning_rate).replace('.', '_')
+        directory = './sim-dsteps-' + str(decay_steps) + '-drate-' + str(decay_rate)
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -107,6 +114,13 @@ for optimization_algo in opti_test:
         plt.ylabel('AAD in %')
         plt.xlabel('Epoch')
         plt.savefig(fname=(directory + '/aad-vs-time'))
+        plt.gcf().clear()
+
+        plt.plot(water_nn.learnprint[0], water_nn.learnprint[1])
+        plt.title('Learning Rate over Epochs')
+        plt.ylabel('Learning Rate')
+        plt.xlabel('Epoch')
+        plt.savefig(fname=(directory + '/lrate-vs-time'))
         plt.gcf().clear()
 
         predictlabels = water_nn.predictNP(testfeatures)
@@ -167,7 +181,20 @@ for optimization_algo in opti_test:
 
         plt.close('all')
 
+        #water_nn.saveToDisk((directory + '/tf-save'))
         water_nn.closeSession()
+
+        #testsave = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
+        #testsave.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=0, decay_steps = decay_steps, decay_rate = decay_rate)
+        #testsave.initialize(init_method = init_method, init_stddev = init_stddev)
+        #testsave.layeroperations()
+        #testsave.initializeSession()
+        #testsave.restoreFromDisk((directory + '/tf-save'))
+        #testsave.initializeSession()
+
+        #print(predictlabels)
+        #print(testsave.predictNP(testfeatures))
+
 
 
 
