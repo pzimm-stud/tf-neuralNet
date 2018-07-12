@@ -146,13 +146,18 @@ class neuralnet:
 
 
         #Methode erweitern damit noch drittes set verwendet wird und trainieren endet wenn error unter stop_error
-    def trainNP(self, trainfeatures, trainlabels, max_epochs, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
+    def trainNP(self, trainfeatures, trainlabels, max_epochs, validfeatures = None , validlabels = None, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
 
         CONSISTENT_LBL = (trainlabels.shape[1] == self.n_labels )
         CONSISTENT_FT = (trainfeatures.shape[1] == self.n_features )
         CONSISTENT_LENGTH = (trainfeatures.shape[0] == trainlabels.shape[0] )
         CONSISTENT_TYPE = ((type(trainfeatures).__module__ == 'numpy' ) & (type(trainlabels).__module__ == 'numpy' ))
         RUNCONDITIONS = CONSISTENT_LBL & CONSISTENT_FT & CONSISTENT_LENGTH & CONSISTENT_TYPE
+
+        if (  (validfeatures.shape[0]) == (validlabels.shape[0]) ):
+            VALIDATION = True
+        elif ( (validfeatures == None) or (validlabels == None) ):
+            VALIDATION = False
 
         #Methode nimmt numpy array an, KEIN! dataframe!!!
         #Hier auf jeden Fall überprüfungen einbauen ob das set die anzahl der features hat, labels muss auch passen und ob trainlabels und trainfeatures gleich lang sind
@@ -163,6 +168,8 @@ class neuralnet:
             lossmon = [0]
             aadmon = [0]
             learnmon = [0]
+            validlossmon = [0]
+            validaadmon = [0]
             zaehl = 0
 
             for epoch in range(max_epochs):
@@ -199,6 +206,10 @@ class neuralnet:
                     if (self.USEDECAY):
                         print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess)))
 
+                    if(VALIDATION):
+                        validcost, validaad = self.sess.run([self.cost, self.aad], feed_dict = {self.x : validfeatures, self.y: validlabels})
+                        print('Cost in validation set: {:.4f}, current AAD in validation set: {:.2f}'.format(validcost, validaad) )
+
                 else:
                     print('Error! batch_size must either be None or greater 0')
 
@@ -208,6 +219,8 @@ class neuralnet:
                         lossmon = [epoch_loss]
                         aadmon = [aadepc]
                         learnmon = [self.learning_rate.eval(session=self.sess)]
+                        validlossmon = [validcost]
+                        validaadmon = [validaad]
 
                     print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
 
@@ -217,15 +230,19 @@ class neuralnet:
                         lossmon.append(epoch_loss)
                         aadmon.append(aadepc)
                         learnmon.append(self.learning_rate.eval(session=self.sess))
+                        validlossmon.append(validcost)
+                        validaadmon.append(validaad)
 
                     self.lossprint = (pos,lossmon)
                     self.aadprint = (pos,aadmon)
                     self.learnprint = (pos,learnmon)
+                    self.validlossprint = (pos,validlossmon)
+                    self.validaadprint = (pos,validaadmon)
 
 
 
 
-    def trainDF(self, trainsetDF, feature_indices, label_indices, max_epochs, batch_size=None, RANDOMIZE_DATASET=True, stop_error=None, PLOTINTERACTIVE=False, STATS=True ):
+    def trainDF(self, trainsetDF, feature_indices, label_indices, max_epochs, validsetDF = None, batch_size=None, RANDOMIZE_DATASET=True, stop_error=None, PLOTINTERACTIVE=False, STATS=True ):
 
         CONSISTENT_TYPE = (type(trainsetDF).__module__ == 'pandas.core.frame' )
 

@@ -37,7 +37,8 @@ label_indices = [ 'Wall Temperature T_wall (new)' ]
 data = pd.read_excel("DataWP5_2SHEET.xls", sheet_name="Filtered")
 
 #Import and preprocess the data (as DataFrame):
-trainset, testset = prepdata.PrepareDF(dataDF=data, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
+#trainset, testset = prepdata.PrepareDF(dataDF=data, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
+trainset, testset, validset = prepdata.PrepareDF(dataDF=data, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
 
 #Import and preprocess the data (as numpy array):
 
@@ -46,7 +47,8 @@ trainfeatures = trainset[feature_indices].values
 trainlabels = trainset[label_indices].values
 testfeatures = testset[feature_indices].values
 testlabels = testset[label_indices].values
-
+validfeatures = validset[feature_indices].values
+validlabels = validset[label_indices].values
 
 
 #for i in range(4,6,1):
@@ -57,7 +59,7 @@ testlabels = testset[label_indices].values
 #opti_test = ( tf.train.AdamOptimizer, tf.train.AdagradOptimizer, tf.train.MomentumOptimizer, tf.train.RMSPropOptimizer)
 #stddevtpl = (0.01, 0.1, 0.5, 1)
 #beta_test = (0.01, 0.005, 0.001, 0.0005, 0.0001)
-decaysteps_test = (100, 1000, 10000)
+decaysteps_test = ( 1000, 10000)
 decayrate_test = (0.98, 0.96, 0.94, 0.92)
 for decay_steps in decaysteps_test:
 #i=0
@@ -83,11 +85,11 @@ for decay_steps in decaysteps_test:
         water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
         water_nn.layeroperations()
         water_nn.initializeSession()
-        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=2000, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+        water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=2000, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
 
         delta_t = time.time() - starttime
 
-        directory = './sim-dsteps-' + str(decay_steps) + '-drate-' + str(decay_rate)
+        directory = './sim-dsteps-' + str(decay_steps) + '-drate-' + str(decay_rate) + 'valid'
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -121,6 +123,20 @@ for decay_steps in decaysteps_test:
         plt.ylabel('Learning Rate')
         plt.xlabel('Epoch')
         plt.savefig(fname=(directory + '/lrate-vs-time'))
+        plt.gcf().clear()
+
+        plt.plot(water_nn.validlossprint[0], water_nn.validlossprint[1])
+        plt.title('Loss in valid set over Epochs')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.savefig(fname=(directory + '/validloss-vs-time'))
+        plt.gcf().clear()
+
+        plt.plot(water_nn.validaadprint[0], water_nn.validaadprint[1])
+        plt.title('AAD in validset over Epochs')
+        plt.ylabel('AAD in %')
+        plt.xlabel('Epoch')
+        plt.savefig(fname=(directory + '/validaad-vs-time'))
         plt.gcf().clear()
 
         predictlabels = water_nn.predictNP(testfeatures)
