@@ -131,18 +131,18 @@ class neuralnet:
 
         self.prediction = tf.add(tf.matmul(templayer[layernum], self.layerdict['output-weights']), self.layerdict['output-biases'])
 
-        #self.cost = tf.reduce_mean(tf.pow((self.prediction-self.y),2)) #also possible: tf.square(self.prediction-self.y)
+        self.cost = tf.reduce_mean(tf.pow((self.prediction-self.y),2)) #also possible: tf.square(self.prediction-self.y)
         self.regularizer = 0
         for layer in range(len(self.layout)):
             self.regularizer += tf.nn.l2_loss( self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] )
-        self.cost = ( tf.reduce_mean(tf.pow((self.prediction-self.y),2)) + self.regularizer * self.beta  )
+        self.regcost = ( tf.reduce_mean(tf.pow((self.prediction-self.y),2)) + self.regularizer * self.beta  )
         self.aad = tf.reduce_mean(tf.abs((self.prediction-self.y))/self.y) * 100
         if (self.learning_rate == None):
-            self.optimizer = self.optimization_algo().minimize(self.cost)
+            self.optimizer = self.optimization_algo().minimize(self.regcost)
         elif(self.USEDECAY):
-            self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.cost, global_step=self.global_step)
+            self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.regcost, global_step=self.global_step)
         else:
-            self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.cost)
+            self.optimizer = self.optimization_algo(self.learning_rate).minimize(self.regcost)
 
 
         #Methode erweitern damit noch drittes set verwendet wird und trainieren endet wenn error unter stop_error
