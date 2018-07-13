@@ -103,7 +103,7 @@ for optimization_algo in optimizer_dict:
                         os.makedirs(directory)
 
                     np_aadvalidmon = np.asarray(water_nn.validaadprint)
-                    aad_last = np_aadvalidmon[1][ (np.aadvalidmon.shape[1]-1) ]
+                    aad_last = np_aadvalidmon[1][ (np_aadvalidmon.shape[1]-1) ]
 
                     np_msevalidmon = np.asarray(water_nn.validlossprint)
                     mse_last = np_msevalidmon[1][ (np_msevalidmon.shape[1]-1) ]
