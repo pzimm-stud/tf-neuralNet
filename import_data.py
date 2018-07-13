@@ -25,25 +25,29 @@ def PrepareDF(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
         return -1
 
 
-        #Scaling only with the mean of training set!!!!
+        #Scaling only with the mean/std/max/min of training set!!!!
+        min = trainset[feature_indices].min()
+        max = trainset[feature_indices].max()
     if (scaleMinMax & (not(scaleStandard)) ):
         #Rescale the feature indices to Range(min,max)
-        trainset[feature_indices] = (trainset[feature_indices] - trainset[feature_indices].min() )* ((Range['max'] -Range['min'] )/( trainset[feature_indices].max() - trainset[feature_indices].min() ))  + Range['min']
-        testset[feature_indices] = (testset[feature_indices] - trainset[feature_indices].min() )* ((Range['max'] -Range['min'] )/( trainset[feature_indices].max() - trainset[feature_indices].min() ))  + Range['min']
+        trainset[feature_indices] = (trainset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
+        testset[feature_indices] = (testset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
         if(testTrainValidSplit):
-            validset[feature_indices] = (validset[feature_indices] - trainset[feature_indices].min() )* ((Range['max'] -Range['min'] )/( trainset[feature_indices].max() - trainset[feature_indices].min() ))  + Range['min']
+            validset[feature_indices] = (validset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
             return trainset,testset,validset
         else:
             return trainset,testset
 
     elif ( (not(scaleMinMax)) & scaleStandard):
+        mean = trainset[feature_indices].mean()
+        std = trainset[feature_indices].std()
         #Following scaling functions can also be done with sklearn.preprocessing MinMaxScaler and StandardScaler
         #center the features on zero and divide by std variance (StandardScaling)
-        trainset[feature_indices] = (trainset[feature_indices] - trainset[feature_indices].mean() )/  trainset[feature_indices].std()
-        testset[feature_indices] = (testset[feature_indices] - trainset[feature_indices].mean() )/  trainset[feature_indices].std()
+        trainset[feature_indices] = (trainset[feature_indices] - mean )/  std
+        testset[feature_indices] = (testset[feature_indices] - mean )/  std
 
         if(testTrainValidSplit):
-            validset[feature_indices] = (validset[feature_indices] - trainset[feature_indices].mean() )/  trainset[feature_indices].std()
+            validset[feature_indices] = (validset[feature_indices] - mean )/  std
             return trainset,testset,validset
         else:
             return trainset,testset
@@ -79,25 +83,29 @@ def PrepareNP(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
         return -1
 
 
-        #Scaling only with the mean of training set!!!!
+        #Scaling only with the mean/std/max/min of training set!!!!
+        min = trainset[feature_indices].min()
+        max = trainset[feature_indices].max()
     if (scaleMinMax & (not(scaleStandard)) ):
         #Rescale the feature indices to Range(min,max)
-        trainset[feature_indices] = (trainset[feature_indices] - trainset[feature_indices].min() )* ((Range['max'] -Range['min'] )/( trainset[feature_indices].max() - trainset[feature_indices].min() ))  + Range['min']
-        testset[feature_indices] = (testset[feature_indices] - trainset[feature_indices].min() )* ((Range['max'] -Range['min'] )/( trainset[feature_indices].max() - trainset[feature_indices].min() ))  + Range['min']
+        trainset[feature_indices] = (trainset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
+        testset[feature_indices] = (testset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
         if(testTrainValidSplit):
-            validset[feature_indices] = (validset[feature_indices] - trainset[feature_indices].min() )* ((Range['max'] -Range['min'] )/( trainset[feature_indices].max() - trainset[feature_indices].min() ))  + Range['min']
+            validset[feature_indices] = (validset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
             return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, validset[feature_indices].values, validset[label_indices].values
         else:
             return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values
 
     elif ( (not(scaleMinMax)) & scaleStandard):
+        mean = trainset[feature_indices].mean()
+        std = trainset[feature_indices].std()
         #Following scaling functions can also be done with sklearn.preprocessing MinMaxScaler and StandardScaler
         #center the features on zero and divide by std variance (StandardScaling)
-        trainset[feature_indices] = (trainset[feature_indices] - trainset[feature_indices].mean() )/  trainset[feature_indices].std()
-        testset[feature_indices] = (testset[feature_indices] - trainset[feature_indices].mean() )/  trainset[feature_indices].std()
+        trainset[feature_indices] = (trainset[feature_indices] - mean )/  std
+        testset[feature_indices] = (testset[feature_indices] - mean )/  std
 
         if(testTrainValidSplit):
-            validset[feature_indices] = (validset[feature_indices] - trainset[feature_indices].mean() )/  trainset[feature_indices].std()
+            validset[feature_indices] = (validset[feature_indices] - mean )/  std
             return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, validset[feature_indices].values, validset[label_indices].values
         else:
             return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values
