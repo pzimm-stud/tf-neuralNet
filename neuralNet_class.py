@@ -26,7 +26,7 @@ class neuralnet:
         RUNCONDITIONS = CONSISTENT_LAYERS & HL_GREATER_1
 
         if not (CONSISTENT_LAYERS):
-            print('Error! len(actfunct) != len(layers). Aborting!')
+            print('Error! len(actfunct) != len(layers)')
 
         if not (HL_GREATER_1):
             print('Error, number of hidden layers must be greater than 1!')
@@ -146,7 +146,7 @@ class neuralnet:
 
 
         #Methode erweitern damit noch drittes set verwendet wird und trainieren endet wenn error unter stop_error
-    def trainNP(self, trainfeatures, trainlabels, max_epochs, validfeatures = None , validlabels = None, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
+    def trainNP(self, trainfeatures, trainlabels, max_epochs, VALIDATION=False, validfeatures = None , validlabels = None, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
 
         CONSISTENT_LBL = (trainlabels.shape[1] == self.n_labels )
         CONSISTENT_FT = (trainfeatures.shape[1] == self.n_features )
@@ -154,10 +154,6 @@ class neuralnet:
         CONSISTENT_TYPE = ((type(trainfeatures).__module__ == 'numpy' ) & (type(trainlabels).__module__ == 'numpy' ))
         RUNCONDITIONS = CONSISTENT_LBL & CONSISTENT_FT & CONSISTENT_LENGTH & CONSISTENT_TYPE
 
-        if (  (validfeatures.shape[0]) == (validlabels.shape[0]) ):
-            VALIDATION = True
-        elif ( (validfeatures == None) or (validlabels == None) ):
-            VALIDATION = False
 
         #Methode nimmt numpy array an, KEIN! dataframe!!!
         #Hier auf jeden Fall überprüfungen einbauen ob das set die anzahl der features hat, labels muss auch passen und ob trainlabels und trainfeatures gleich lang sind
@@ -219,8 +215,9 @@ class neuralnet:
                         lossmon = [epoch_loss]
                         aadmon = [aadepc]
                         learnmon = [self.learning_rate.eval(session=self.sess)]
-                        validlossmon = [validcost]
-                        validaadmon = [validaad]
+                        if(VALIDATION):
+                            validlossmon = [validcost]
+                            validaadmon = [validaad]
 
                     print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
 
@@ -230,14 +227,17 @@ class neuralnet:
                         lossmon.append(epoch_loss)
                         aadmon.append(aadepc)
                         learnmon.append(self.learning_rate.eval(session=self.sess))
-                        validlossmon.append(validcost)
-                        validaadmon.append(validaad)
+                        if(VALIDATION):
+                            validlossmon.append(validcost)
+                            validaadmon.append(validaad)
 
                     self.lossprint = (pos,lossmon)
                     self.aadprint = (pos,aadmon)
                     self.learnprint = (pos,learnmon)
-                    self.validlossprint = (pos,validlossmon)
-                    self.validaadprint = (pos,validaadmon)
+
+                    if(VALIDATION):
+                        self.validlossprint = (pos,validlossmon)
+                        self.validaadprint = (pos,validaadmon)
 
 
 
@@ -323,6 +323,7 @@ class neuralnet:
 
     def closeSession(self):
         self.sess.close()
+        tf.reset_default_graph()
 
         #Evtl. saver implementieren inn eigene Methode! Save und resume! schauen wie es mit tf.train.Saver() funktionier wo gehört der hin! wie ist es mit constructor wenn der differiert?
     def saveToDisk (self, path):
