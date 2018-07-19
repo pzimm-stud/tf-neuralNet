@@ -17,11 +17,11 @@ beta = 0.001
 #optimization_algo = tf.train.GradientDescentOptimizer
 #learning_rate = None
 learning_rate = 0.001
-decay_steps = 5000
+decay_steps = 3000
 #Watch out, decay_steps/global_step gets evaluated EVERY minibatch! so may increase the decay_steps if you lower the batch_size
 #Maybe use smth like: decay_steps = 1000 * trainfeatures.shape[0]/batch_size so it is consitent through different batch sizes
 #decay_steps = None
-decay_rate = 0.97
+decay_rate = 0.96
 #decay_rate = None
 init_method = 6
 init_stddev = 0.5
@@ -32,23 +32,50 @@ batch_size=32
 
 #Load data from sCO2 Dataset:
 sco2_filename = 'nn_aio.xlsx'
-sco2_feature_indices = ['Mass_Flux_g', 'inlet_pressure', 'heat_flux', 'pipe_diameter', 'bulk_spec_enthalpy']
+#Good results using Mass_flux_g instead of inlet temp!
+#sco2_feature_indices = ['Mass_Flux_g', 'inlet_pressure', 'heat_flux', 'pipe_diameter', 'bulk_spec_enthalpy']
+sco2_feature_indices = ['inlet_temp', 'inlet_pressure', 'heat_flux', 'pipe_diameter', 'bulk_spec_enthalpy']
 sco2_label_indices = ['walltemp']
 sco2_data = pd.read_excel(sco2_filename)
 
 #Use only columns with features or labels:
 sco2_data = sco2_data[sco2_feature_indices + sco2_label_indices].dropna()
 
+#Define the operating point to cut from the dataset
+operating_point_dict = {'heat_flux' : [30], 'inlet_pressure': [8.8], 'pipe_diameter': [2], 'inlet_temp': [301] }
+mask = sco2_data.isin(operating_point_dict)
+op_point = sco2_data.drop(mask[~( mask['inlet_temp'] & mask['heat_flux'] & mask['inlet_pressure'] & mask['pipe_diameter'])  ].index)
+
+#Define on whole diameter to let out at training:
+#operating_point_dict = {'pipe_diameter': [5] }
+#mask = sco2_data.isin(operating_point_dict)
+#op_point = sco2_data.drop(mask[~( mask['pipe_diameter']) ].index)
+
+#cut the operating point values out of the dataset:
+sco2_data = sco2_data.drop(op_point.index)
+
+#Split the dataset into test train and validation set
+trainset = sco2_data.sample(frac=0.8)
+testset = sco2_data.drop(trainset.index)
+validset = trainset.sample(frac=0.2)
+trainset = trainset.drop(validset.index)
+
+#Preprocess the data (StandardScaling)
+mean = trainset[sco2_feature_indices].mean()
+std = trainset[sco2_feature_indices].std()
+
+trainset[sco2_feature_indices] = (trainset[sco2_feature_indices] - mean )/  std
+testset[sco2_feature_indices] = (testset[sco2_feature_indices] - mean )/  std
+validset[sco2_feature_indices] = (validset[sco2_feature_indices] - mean )/  std
+op_point[sco2_feature_indices] = (op_point[sco2_feature_indices] - mean )/ std
+
 
 #Import and preprocess the data (as DataFrame):
-trainset, testset, validset = prepdata.PrepareDF(dataDF=sco2_data, feature_indices=sco2_feature_indices, label_indices=sco2_label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
+#trainset, testset, validset = prepdata.PrepareDF(dataDF=sco2_data, feature_indices=sco2_feature_indices, label_indices=sco2_label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
 #sh2o_trainset, sh2o_testset = prepdata.PrepareDF(dataDF=sh2o_data, feature_indices=sh2o_feature_indices, label_indices=sh2o_label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
 
 #Import and preprocess the data (as numpy array):
 
-print(trainset.shape)
-print(testset.shape)
-print(validset.shape)
 
 trainfeatures = trainset[sco2_feature_indices].values
 trainlabels = trainset[sco2_label_indices].values
@@ -124,6 +151,10 @@ bulkspec_ent_train = trainset[sco2_feature_indices[4]].values
 walltemp_train_dns = (bulkspec_ent_train, trainset[sco2_label_indices].values)
 walltemp_train_dnn = (bulkspec_ent_train, predict_train)
 
+sco2_predict_op = water_nn.predictNP(op_point[sco2_feature_indices].values)
+sco2_bulkspec_enthalpy_op =  op_point[sco2_feature_indices[4]].values
+sco2_walltemp_dns_op = ( sco2_bulkspec_enthalpy_op, op_point[sco2_label_indices].values )
+sco2_walltemp_dnn_op = ( sco2_bulkspec_enthalpy_op, sco2_predict_op)
 
 
 
@@ -177,7 +208,27 @@ plt.legend(loc=2)
 plt.savefig(fname=('./temp-dns-vs-dnn-sCO2-train'))
 plt.gcf().clear()
 
+fig9 = plt.figure()
+ax9 = fig9.add_subplot(1,1,1)
+ax9.scatter(sco2_walltemp_dns_op[0], sco2_walltemp_dns_op[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='DNS')
+ax9.scatter(sco2_walltemp_dnn_op[0], sco2_walltemp_dnn_op[1], alpha=0.8, c='blue', edgecolors='black', marker='o', s=30, label='DNN')
+plt.title('Walltemp DNS vs DNN over bulk specific enthalpy with sCO2 one op condition')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-dnn-over-hbulk-sco2-op'))
+plt.gcf().clear()
 
+fig4 = plt.figure()
+ax4 = fig4.add_subplot(1,1,1)
+ax4.scatter(sco2_walltemp_dnn_op[1], sco2_walltemp_dns_op[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='noLBL')
+pltmin = np.amin((np.amin(sco2_walltemp_dnn_op[1]),np.amin(sco2_walltemp_dns_op[1])))
+pltmax = np.amax((np.amax(sco2_walltemp_dnn_op[1]),np.amax(sco2_walltemp_dns_op[1])))
+plt.ylim(ymax = pltmax, ymin = pltmin)
+plt.xlim(xmax = pltmax, xmin = pltmin)
+plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
+plt.title('Walltemp DNS vs DNN at one op condition with sCO2')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-vs-dnn-sCO2-op'))
+plt.gcf().clear()
 
 
 
