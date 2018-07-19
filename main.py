@@ -46,6 +46,9 @@ trainset, testset, validset = prepdata.PrepareDF(dataDF=sco2_data, feature_indic
 
 #Import and preprocess the data (as numpy array):
 
+print(trainset.shape)
+print(testset.shape)
+print(validset.shape)
 
 trainfeatures = trainset[sco2_feature_indices].values
 trainlabels = trainset[sco2_label_indices].values
@@ -64,7 +67,7 @@ water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate,
 water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
 water_nn.layeroperations()
 water_nn.initializeSession()
-water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=2500, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=1500, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
 
 delta_t = time.time() - starttime
 
@@ -90,6 +93,22 @@ plt.title('Learning Rate over Epochs')
 plt.ylabel('Learning Rate')
 plt.xlabel('Epoch')
 plt.savefig(fname=('./lrate-vs-time'))
+plt.gcf().clear()
+
+plt.plot(water_nn.validlossprint[0], water_nn.validlossprint[1])
+plt.title('Loss over Epochs in validset')
+plt.yscale('log')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.savefig(fname=('./loss-vs-time-valid'))
+plt.gcf().clear()
+
+plt.plot(water_nn.validaadprint[0], water_nn.validaadprint[1])
+plt.title('AAD over Epochs in validset')
+plt.ylim(ymax=10, ymin=0)
+plt.ylabel('AAD in %')
+plt.xlabel('Epoch')
+plt.savefig(fname=('./aad-vs-time-valid'))
 plt.gcf().clear()
 
 
@@ -131,6 +150,31 @@ plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth
 plt.title('Walltemp DNS vs DNN in validation set with sCO2')
 plt.legend(loc=2)
 plt.savefig(fname=('./temp-dns-vs-dnn-sCO2'))
+plt.gcf().clear()
+
+
+fig3 = plt.figure()
+ax3 = fig3.add_subplot(1,1,1)
+ax3.scatter(walltemp_train_dns[0], walltemp_train_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='DNS')
+ax3.scatter(walltemp_train_dnn[0], walltemp_train_dnn[1], alpha=0.8, c='blue', edgecolors='black', marker='o', s=30, label='DNN')
+plt.title('Walltemp DNS vs DNN over bulk specific enthalpy with sCO2 in trainset')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-dnn-over-hbulk-sco2-train'))
+plt.gcf().clear()
+
+
+
+fig8 = plt.figure()
+ax8 = fig8.add_subplot(1,1,1)
+ax8.scatter(walltemp_train_dnn[1], walltemp_train_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='noLBL')
+pltmin = np.amin((np.amin(walltemp_train_dnn[1]),np.amin(walltemp_train_dns[1])))
+pltmax = np.amax((np.amax(walltemp_train_dnn[1]),np.amax(walltemp_train_dns[1])))
+plt.ylim(ymax = pltmax, ymin = pltmin)
+plt.xlim(xmax = pltmax, xmin = pltmin)
+plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
+plt.title('Walltemp DNS vs DNN in training set with sCO2')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-vs-dnn-sCO2-train'))
 plt.gcf().clear()
 
 
