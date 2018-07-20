@@ -8,7 +8,7 @@ import os
 import time
 
 #Define the structure of the neuralNet
-n_features = 5
+n_features = 6
 n_labels = 1
 layout = (350,350,350,350)
 actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
@@ -55,6 +55,14 @@ rename_dict = { sh2o_feature_indices[3] : sco2_feature_indices[0], sh2o_feature_
 
 #Rename sH2O columns:
 sh2o_data = sh2o_data.rename(index=str, columns = rename_dict)
+
+#Add the FluidMarker to the datasets:
+sh2o_data['fluidMarker'] = 2
+sco2_data['fluidMarker'] = 1
+
+sh2o_feature_indices = ['Heat Flux q_local (new)', 'Enthalpy local h_local (new)', 'Pressure p (new)', 'Mass Flux G (new)', 'Diameter Inside d_in (new)', 'fluidMarker']
+sco2_feature_indices = ['Mass_Flux_g', 'inlet_pressure', 'heat_flux', 'pipe_diameter', 'bulk_spec_enthalpy', 'fluidMarker']
+
 
 #extract some random sh2o and sco2 test data:
 
