@@ -13,15 +13,15 @@ layout = (350,350,350,350)
 actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
 #actfunct = (tf.nn.relu, tf.nn.relu, tf.nn.relu, tf.nn.relu, tf.nn.relu)
 optimization_algo = tf.train.AdamOptimizer
-beta = 0.001
+beta = 0.0005
 #optimization_algo = tf.train.GradientDescentOptimizer
 #learning_rate = None
-learning_rate = 0.001
-decay_steps = 3000
+learning_rate = 0.01
+decay_steps = 1200
 #Watch out, decay_steps/global_step gets evaluated EVERY minibatch! so may increase the decay_steps if you lower the batch_size
 #Maybe use smth like: decay_steps = 1000 * trainfeatures.shape[0]/batch_size so it is consitent through different batch sizes
 #decay_steps = None
-decay_rate = 0.96
+decay_rate = 0.93
 #decay_rate = None
 init_method = 6
 init_stddev = 0.5
@@ -90,7 +90,7 @@ starttime = time.time()
 
 
 water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate)
+water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = True)
 water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
 water_nn.layeroperations()
 water_nn.initializeSession()
