@@ -10,22 +10,22 @@ import time
 #Define the structure of the neuralNet
 n_features = 6
 n_labels = 1
-layout = (350,350,350,350)
-actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
+layout = (600,550,500,550, 500)
+actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
 #actfunct = (tf.nn.relu, tf.nn.relu, tf.nn.relu, tf.nn.relu, tf.nn.relu)
 optimization_algo = tf.train.AdamOptimizer
-beta = 0.001
+beta = 0.0005
 #optimization_algo = tf.train.GradientDescentOptimizer
 #learning_rate = None
-learning_rate = 0.001
+learning_rate = 0.0001
 decay_steps = 5000
 #Watch out, decay_steps/global_step gets evaluated EVERY minibatch! so may increase the decay_steps if you lower the batch_size
 #Maybe use smth like: decay_steps = 1000 * trainfeatures.shape[0]/batch_size so it is consitent through different batch sizes
 #decay_steps = None
 decay_rate = 0.97
 #decay_rate = None
-init_method = 6
-init_stddev = 0.5
+init_method = 5
+init_stddev = 0.2
 batch_size=32
 
 
@@ -83,6 +83,10 @@ traindata[sco2_feature_indices] = (traindata[sco2_feature_indices] - mean )/  st
 sh2o_test_df[sco2_feature_indices] = ( sh2o_test_df[sco2_feature_indices] - mean )/  std
 sco2_test_df[sco2_feature_indices] = ( sco2_test_df[sco2_feature_indices] - mean )/  std
 
+#Seperate the two datasets to get 50% probability of using sH2o or sCO2 datapoint for training
+sh2o_train_df[sco2_feature_indices] = ( sh2o_train_df[sco2_feature_indices] - mean) / std
+sco2_train_df[sco2_feature_indices] = ( sco2_train_df[sco2_feature_indices] - mean) / std
+
 
 #Import and preprocess the data (as DataFrame):
 #trainset, testset = prepdata.PrepareDF(dataDF=data, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
@@ -91,8 +95,15 @@ sco2_test_df[sco2_feature_indices] = ( sco2_test_df[sco2_feature_indices] - mean
 #Import and preprocess the data (as numpy array):
 
 
-trainfeatures = traindata[sco2_feature_indices].values
-trainlabels = traindata[sco2_label_indices].values
+#trainfeatures = traindata[sco2_feature_indices].values
+#trainlabels = traindata[sco2_label_indices].values
+
+
+sh2o_trainfeatures = sh2o_train_df[sco2_feature_indices].values
+sh2o_trainlabels = sh2o_train_df[sco2_label_indices].values
+
+sco2_trainfeatures = sco2_train_df[sco2_feature_indices].values
+sco2_trainlabels = sco2_train_df[sco2_label_indices].values
 
 sh2o_testfeatures = sh2o_test_df[sco2_feature_indices].values
 sh2o_testlabels = sh2o_test_df[sco2_label_indices].values
@@ -108,7 +119,7 @@ water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate,
 water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
 water_nn.layeroperations()
 water_nn.initializeSession()
-water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=2500, VALIDATION=False, validfeatures = None , validlabels = None, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+water_nn.trainNP(sco2_trainfeatures=sco2_trainfeatures, sco2_trainlabels=sco2_trainlabels, sh2o_trainfeatures=sh2o_trainfeatures, sh2o_trainlabels=sh2o_trainlabels,  max_epochs=2500, VALIDATION=False, validfeatures = None , validlabels = None, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
 
 delta_t = time.time() - starttime
 

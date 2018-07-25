@@ -146,12 +146,12 @@ class neuralnet:
 
 
         #Methode erweitern damit noch drittes set verwendet wird und trainieren endet wenn error unter stop_error
-    def trainNP(self, trainfeatures, trainlabels, max_epochs, VALIDATION=False, validfeatures = None , validlabels = None, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
+    def trainNP(self, sco2_trainfeatures, sco2_trainlabels, sh2o_trainfeatures, sh2o_trainlabels, max_epochs, VALIDATION=False, validfeatures = None , validlabels = None, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
 
-        CONSISTENT_LBL = (trainlabels.shape[1] == self.n_labels )
-        CONSISTENT_FT = (trainfeatures.shape[1] == self.n_features )
-        CONSISTENT_LENGTH = (trainfeatures.shape[0] == trainlabels.shape[0] )
-        CONSISTENT_TYPE = ((type(trainfeatures).__module__ == 'numpy' ) & (type(trainlabels).__module__ == 'numpy' ))
+        CONSISTENT_LBL = (sco2_trainlabels.shape[1] == self.n_labels )
+        CONSISTENT_FT = (sco2_trainfeatures.shape[1] == self.n_features )
+        CONSISTENT_LENGTH = (sco2_trainfeatures.shape[0] == sco2_trainlabels.shape[0] )
+        CONSISTENT_TYPE = ((type(sco2_trainfeatures).__module__ == 'numpy' ) & (type(sco2_trainlabels).__module__ == 'numpy' ))
         RUNCONDITIONS = CONSISTENT_LBL & CONSISTENT_FT & CONSISTENT_LENGTH & CONSISTENT_TYPE
 
 
@@ -167,15 +167,27 @@ class neuralnet:
             validlossmon = [0]
             validaadmon = [0]
             zaehl = 0
+            data_b_size = int(batch_size/2)
 
             for epoch in range(max_epochs):
                 if (RANDOMIZE_DATASET):
-                    traintemp = np.concatenate((trainfeatures, trainlabels),axis=1)
-                    np.random.shuffle(traintemp)
+                    sco2_traintemp = np.concatenate((sco2_trainfeatures, sco2_trainlabels),axis=1)
+                    sh2o_traintemp = np.concatenate((sh2o_trainfeatures, sh2o_trainlabels),axis=1)
+                    np.random.shuffle(sco2_traintemp)
+                    np.random.shuffle(sh2o_traintemp)
                 else:
-                    traintemp = np.concatenate((trainfeatures, trainlabels),axis=1)
+                    sco2_traintemp = np.concatenate((sco2_trainfeatures, sco2_trainlabels),axis=1)
+                    sh2o_traintemp = np.concatenate((sh2o_trainfeatures, sh2o_trainlabels),axis=1)
 
                 epoch_loss = 0
+
+                #Test which dataset is the bigger one
+                if ( sco2_traintemp.shape[0] > sh2o_traintemp.shape[0]):
+                    maxlen = sco2_traintemp.shape[0]
+                    minlen = sh2o_traintemp.shape[0]
+                else:
+                    minlen = sco2_traintemp.shape[0]
+                    maxlen = sh2o_traintemp.shape[0]
 
                 if (batch_size == None): #Do FullBatch
 
@@ -184,20 +196,38 @@ class neuralnet:
 
                 elif(batch_size > 0): #Do Mini Batch with batch_size > 0
 
-                    for i in range(int(traintemp.shape[0]/batch_size)):
-                        #Laden der features in ein array x und y für features und labels
-                        epoch_x = traintemp[i*batch_size : (i+1)*batch_size ,:self.n_features]
-                        epoch_y = traintemp[i*batch_size : (i+1)*batch_size ,self.n_features :]
+
+                    j=0
+                    for i in range( int (maxlen/data_b_size)):
+                        if(i % (int(minlen/data_b_size)) == 0):
+                            i=0
+
+                        batchtemp = np.concatenate(( sh2o_traintemp[i*data_b_size : (i+1)*data_b_size, :] , sco2_traintemp[j*data_b_size : (j+1)*data_b_size , :]))
+                        np.random.shuffle(batchtemp)
+                        epoch_x = batchtemp[: , :self.n_features]
+                        epoch_y = batchtemp[: , self.n_features :]
+
                         _, c, aad = self.sess.run([self.optimizer, self.cost, self.aad], feed_dict = {self.x: epoch_x, self.y: epoch_y})
                         epoch_loss += c
 
-                    if ((traintemp.shape[0] % batch_size) != 0): #iterate over last examples smaller than batch size
-                        epoch_x = traintemp[int( (i+1)*batch_size) : ,:self.n_features]
-                        epoch_y = traintemp[int( (i+1)*batch_size) : ,self.n_features :]
-                        _, c, aad = self.sess.run([self.optimizer, self.cost, self.aad], feed_dict = {self.x: epoch_x, self.y: epoch_y})
-                        epoch_loss += c
+                        j+=1
+
+
+                    #for i in range(int(traintemp.shape[0]/batch_size)):
+                        #Laden der features in ein array x und y für features und labels
+                    #    epoch_x = traintemp[i*batch_size : (i+1)*batch_size ,:self.n_features]
+                    #    epoch_y = traintemp[i*batch_size : (i+1)*batch_size ,self.n_features :]
+                    #    _, c, aad = self.sess.run([self.optimizer, self.cost, self.aad], feed_dict = {self.x: epoch_x, self.y: epoch_y})
+                    #    epoch_loss += c
+
+                    #if ((traintemp.shape[0] % batch_size) != 0): #iterate over last examples smaller than batch size
+                    #    epoch_x = traintemp[int( (i+1)*batch_size) : ,:self.n_features]
+                    #    epoch_y = traintemp[int( (i+1)*batch_size) : ,self.n_features :]
+                    #    _, c, aad = self.sess.run([self.optimizer, self.cost, self.aad], feed_dict = {self.x: epoch_x, self.y: epoch_y})
+                    #    epoch_loss += c
 
                     #After last minibatch iteration calculate aad over the whole trainset!
+                    traintemp = np.concatenate (( sh2o_traintemp , sco2_traintemp))
                     aadepc = self.sess.run([self.aad], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})
                     if (self.USEDECAY):
                         print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess)))
