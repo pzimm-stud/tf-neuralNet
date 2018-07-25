@@ -90,7 +90,7 @@ starttime = time.time()
 
 
 water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = True)
+water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = False)
 water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
 water_nn.layeroperations()
 water_nn.initializeSession()
@@ -99,19 +99,30 @@ water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epoch
 delta_t = time.time() - starttime
 
 
+water_nn1 = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
+water_nn1.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = True)
+water_nn1.initialize(init_method = init_method, init_stddev = init_stddev)
+water_nn1.layeroperations()
+water_nn1.initializeSession()
+water_nn1.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=1500, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
 
-plt.plot(water_nn.lossprint[0], water_nn.lossprint[1])
+
+plt.plot(water_nn.lossprint[0], water_nn.lossprint[1], label='no-batch_norm')
+plt.plot(water_nn.lossprint[0], water_nn1.lossprint[1], label='batch_norm')
 plt.title('Loss over Epochs')
 plt.yscale('log')
 plt.ylabel('Loss')
 plt.xlabel('Epoch')
+plt.legend(loc=1)
 plt.savefig(fname=('./loss-vs-time'))
 plt.gcf().clear()
 
-plt.plot(water_nn.aadprint[0], water_nn.aadprint[1])
+plt.plot(water_nn.aadprint[0], water_nn.aadprint[1], label='no-batch_norm')
+plt.plot(water_nn.aadprint[0], water_nn1.aadprint[1], label='batch_norm')
 plt.title('AAD over Epochs')
 plt.ylabel('AAD in %')
 plt.xlabel('Epoch')
+plt.legend(loc=1)
 plt.savefig(fname=('./aad-vs-time'))
 plt.gcf().clear()
 
@@ -122,19 +133,23 @@ plt.xlabel('Epoch')
 plt.savefig(fname=('./lrate-vs-time'))
 plt.gcf().clear()
 
-plt.plot(water_nn.validlossprint[0], water_nn.validlossprint[1])
+plt.plot(water_nn.validlossprint[0], water_nn.validlossprint[1], label='no-batch_norm')
+plt.plot(water_nn.validlossprint[0], water_nn1.validlossprint[1], label='batch_norm')
 plt.title('Loss over Epochs in validset')
 plt.yscale('log')
 plt.ylabel('Loss')
 plt.xlabel('Epoch')
+plt.legend(loc=1)
 plt.savefig(fname=('./loss-vs-time-valid'))
 plt.gcf().clear()
 
-plt.plot(water_nn.validaadprint[0], water_nn.validaadprint[1])
+plt.plot(water_nn.validaadprint[0], water_nn.validaadprint[1], label='no-batch_norm')
+plt.plot(water_nn.validaadprint[0], water_nn1.validaadprint[1], label='batch_norm')
 plt.title('AAD over Epochs in validset')
 plt.ylim(ymax=10, ymin=0)
 plt.ylabel('AAD in %')
 plt.xlabel('Epoch')
+plt.legend(loc=1)
 plt.savefig(fname=('./aad-vs-time-valid'))
 plt.gcf().clear()
 
