@@ -102,10 +102,15 @@ class neuralnet:
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
 
 
-    def build(self, optimization_algo, learning_rate, beta = 0, decay_steps = None, decay_rate = None, BATCH_NORM=False):
+    def build(self, optimization_algo, learning_rate, beta = 0, decay_steps = None, decay_rate = None, BATCH_NORM=False, dropout_rate=0):
         self.x = tf.placeholder('float',[None, self.n_features])
         self.y = tf.placeholder('float',[None, self.n_labels])
         self.BATCH_NORM = BATCH_NORM
+        if ( (dropout_rate > 0) & (dropout_rate < 1) ):
+            self.dropout_rate = dropout_rate
+            self.training_droput = False
+            self.DROPOUT = True
+        else: self.DROPOUT = False
         if (self.BATCH_NORM):
             self.training = False
         self.optimization_algo = optimization_algo
@@ -128,15 +133,27 @@ class neuralnet:
         for layernum in range(len(self.layout)):
             if(layernum==0): #first layer needs n_features as first dimension
                 if (self.BATCH_NORM):
-                    templayer.append( self.actfunct[layernum]( tf.layers.batch_normalization( tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]), training=self.training ) ) )
+                    if (self.DROPOUT):
+                        templayer.append( tf.layers.dropout( self.actfunct[layernum]( tf.layers.batch_normalization( tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]), training=self.training ) ), rate=self.dropout_rate, training=self.training_droput) )
+                    else:
+                        templayer.append( self.actfunct[layernum]( tf.layers.batch_normalization( tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]), training=self.training ) ) )
                 else:
-                    templayer.append( self.actfunct[layernum]( tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ) )
+                    if (self.DROPOUT):
+                        templayer.append( tf.layers.dropout( self.actfunct[layernum]( tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ), rate=self.dropout_rate, training=self.training_droput) )
+                    else:
+                        templayer.append( self.actfunct[layernum]( tf.add(tf.matmul(self.x, self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ) )
 
             else:
                 if (self.BATCH_NORM):
-                    templayer.append( self.actfunct[layernum]( tf.layers.batch_normalization( tf.add(tf.matmul( templayer[layernum-1], self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]), training=self.training ) ) )
+                    if (self.DROPOUT):
+                        templayer.append( tf.layers.dropout( self.actfunct[layernum]( tf.layers.batch_normalization( tf.add(tf.matmul( templayer[layernum-1], self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]), training=self.training ) ), rate=self.dropout_rate, training=self.training_droput) )
+                    else:
+                        templayer.append( self.actfunct[layernum]( tf.layers.batch_normalization( tf.add(tf.matmul( templayer[layernum-1], self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]), training=self.training ) ) )
                 else:
-                    templayer.append( self.actfunct[layernum]( tf.add(tf.matmul( templayer[layernum-1], self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ) )
+                    if (self.DROPOUT):
+                        templayer.append( tf.layers.dropout( self.actfunct[layernum]( tf.add(tf.matmul( templayer[layernum-1], self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ), rate=self.dropout_rate, training=self.training_droput) )
+                    else:
+                        templayer.append( self.actfunct[layernum]( tf.add(tf.matmul( templayer[layernum-1], self.layerdict[ ('hi-lay-' + str(layernum+1) + '-weights' ) ]), self.layerdict[ ('hi-lay-' + str(layernum+1) + '-biases' ) ]) ) )
 
         self.prediction = tf.add(tf.matmul(templayer[layernum], self.layerdict['output-weights']), self.layerdict['output-biases'])
 
@@ -163,6 +180,7 @@ class neuralnet:
     def trainNP(self, trainfeatures, trainlabels, max_epochs, validfeatures = None , validlabels = None, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
 
         if (self.BATCH_NORM): self.training = True
+        if (self.DROPOUT): self.training_droput = True
         CONSISTENT_LBL = (trainlabels.shape[1] == self.n_labels )
         CONSISTENT_FT = (trainfeatures.shape[1] == self.n_features )
         CONSISTENT_LENGTH = (trainfeatures.shape[0] == trainlabels.shape[0] )
@@ -223,8 +241,10 @@ class neuralnet:
 
                     if(VALIDATION):
                         if (self.BATCH_NORM): self.training = False
+                        if (self.DROPOUT): self.training_droput = False
                         validcost, validaad = self.sess.run([self.cost, self.aad], feed_dict = {self.x : validfeatures, self.y: validlabels})
                         if (self.BATCH_NORM): self.training = True
+                        if (self.DROPOUT): self.training_droput = True
                         print('Cost in validation set: {:.4f}, current AAD in validation set: {:.2f}'.format(validcost, validaad) )
 
                 else:
@@ -330,10 +350,12 @@ class neuralnet:
 
     def predictNP(self, testfeatures):
         if (self.BATCH_NORM): self.training = False
+        if (self.DROPOUT): self.training_droput = False
         return  self.prediction.eval(feed_dict={self.x: testfeatures}, session=self.sess)
 
     def predictNPMSE(self, testfeatures, testlabels ):
         if (self.BATCH_NORM): self.training = False
+        if (self.DROPOUT): self.training_droput = False
         return self.sess.run([self.cost, self.aad], feed_dict = {self.x : testfeatures, self.y: testlabels} )
 
 
