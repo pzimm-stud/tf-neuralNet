@@ -332,6 +332,10 @@ class neuralnet:
         if (self.BATCH_NORM): self.training = False
         return  self.prediction.eval(feed_dict={self.x: testfeatures}, session=self.sess)
 
+    def predictNPMSE(self, testfeatures, testlabels ):
+        if (self.BATCH_NORM): self.training = False
+        return self.sess.run([self.cost, self.aad], feed_dict = {self.x : testfeatures, self.y: testlabels} )
+
 
     def predictDF(self, testset, feature_labels):
         if (self.BATCH_NORM): self.training = False
