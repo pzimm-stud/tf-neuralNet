@@ -6,284 +6,259 @@ import neuralNet_class as neuralNet
 import import_data as prepdata
 import os
 import time
-
 #Define the structure of the neuralNet
 n_features = 5
 n_labels = 1
-#layout = (350,350,350,350,350)
-#actfunct = (tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid)
+layout = (350,350,250)
+#actfunct = (tf.nn.sigmoid, tf.nn.sigmoid)
+actfunct = (tf.nn.tanh, tf.nn.tanh, tf.nn.tanh)
 #actfunct = (tf.nn.relu, tf.nn.relu, tf.nn.relu, tf.nn.relu, tf.nn.relu)
-#optimization_algo = tf.train.AdamOptimizer
-#beta = 0.007
+optimization_algo = tf.train.AdamOptimizer
+beta = 0.0005
 #optimization_algo = tf.train.GradientDescentOptimizer
 #learning_rate = None
-#learning_rate = 0.001
-decay_steps = 4000
+learning_rate = 0.01
+decay_steps = 2000
 #Watch out, decay_steps/global_step gets evaluated EVERY minibatch! so may increase the decay_steps if you lower the batch_size
 #Maybe use smth like: decay_steps = 1000 * trainfeatures.shape[0]/batch_size so it is consitent through different batch sizes
 #decay_steps = None
-decay_rate = 0.97
+decay_rate = 0.93
 #decay_rate = None
-#init_method = 1
-#init_stddev = 0.2
+init_method = 6
+init_stddev = 0.5
 batch_size=32
 
 
 
-#Load Data from original Waterset
-filename = 'DataWP5_2SHEET.xls'
-feature_indices = ['Heat Flux q_local (new)', 'Enthalpy local h_local (new)', 'Pressure p (new)', 'Mass Flux G (new)', 'Diameter Inside d_in (new)']
-label_indices = [ 'Wall Temperature T_wall (new)' ]
-data = pd.read_excel(filename, sheet_name="Filtered")
+
+#Load data from sCO2 Dataset:
+sco2_filename = 'nn_aio.xlsx'
+#Good results using Mass_flux_g instead of inlet temp!
+#sco2_feature_indices = ['Mass_Flux_g', 'inlet_pressure', 'heat_flux', 'pipe_diameter', 'bulk_spec_enthalpy']
+sco2_feature_indices = ['inlet_temp', 'inlet_pressure', 'heat_flux', 'pipe_diameter', 'bulk_spec_enthalpy']
+sco2_label_indices = ['walltemp']
+sco2_data = pd.read_excel(sco2_filename)
+
+#Use only columns with features or labels:
+sco2_data = sco2_data[sco2_feature_indices + sco2_label_indices].dropna()
+
+#Define the operating point to cut from the dataset
+operating_point_dict = {'heat_flux' : [30], 'inlet_pressure': [8.8], 'pipe_diameter': [2], 'inlet_temp': [301] }
+mask = sco2_data.isin(operating_point_dict)
+op_point = sco2_data.drop(mask[~( mask['inlet_temp'] & mask['heat_flux'] & mask['inlet_pressure'] & mask['pipe_diameter'])  ].index)
+
+#Define on whole diameter to let out at training:
+#operating_point_dict = {'pipe_diameter': [5] }
+#mask = sco2_data.isin(operating_point_dict)
+#op_point = sco2_data.drop(mask[~( mask['pipe_diameter']) ].index)
+
+#cut the operating point values out of the dataset:
+sco2_data = sco2_data.drop(op_point.index)
+
+#Split the dataset into test train and validation set
+trainset = sco2_data.sample(frac=0.8)
+testset = sco2_data.drop(trainset.index)
+validset = trainset.sample(frac=0.2)
+trainset = trainset.drop(validset.index)
+
+#Preprocess the data (StandardScaling)
+mean = trainset[sco2_feature_indices].mean()
+std = trainset[sco2_feature_indices].std()
+
+trainset[sco2_feature_indices] = (trainset[sco2_feature_indices] - mean )/  std
+testset[sco2_feature_indices] = (testset[sco2_feature_indices] - mean )/  std
+validset[sco2_feature_indices] = (validset[sco2_feature_indices] - mean )/  std
+op_point[sco2_feature_indices] = (op_point[sco2_feature_indices] - mean )/ std
+
 
 #Import and preprocess the data (as DataFrame):
-#trainset, testset = prepdata.PrepareDF(dataDF=data, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
-trainset, testset, validset = prepdata.PrepareDF(dataDF=data, feature_indices=feature_indices, label_indices=label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
+#trainset, testset, validset = prepdata.PrepareDF(dataDF=sco2_data, feature_indices=sco2_feature_indices, label_indices=sco2_label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
+#sh2o_trainset, sh2o_testset = prepdata.PrepareDF(dataDF=sh2o_data, feature_indices=sh2o_feature_indices, label_indices=sh2o_label_indices, frac=0.8, scaleStandard = True, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
 
 #Import and preprocess the data (as numpy array):
 
 
-trainfeatures = trainset[feature_indices].values
-trainlabels = trainset[label_indices].values
-testfeatures = testset[feature_indices].values
-testlabels = testset[label_indices].values
-validfeatures = validset[feature_indices].values
-validlabels = validset[label_indices].values
+trainfeatures = trainset[sco2_feature_indices].values
+trainlabels = trainset[sco2_label_indices].values
+
+testfeatures = testset[sco2_feature_indices].values
+testlabels = testset[sco2_label_indices].values
+
+validfeatures = validset[sco2_feature_indices].values
+validlabels = validset[sco2_label_indices].values
+
+starttime = time.time()
+
+
+water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
+water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = True, dropout_rate=0)
+water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
+water_nn.layeroperations()
+water_nn.initializeSession()
+water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=5000, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+
+delta_t = time.time() - starttime
+
+
+water_nn1 = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
+water_nn1.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = True, dropout_rate=0.4)
+water_nn1.initialize(init_method = init_method, init_stddev = init_stddev)
+water_nn1.layeroperations()
+water_nn1.initializeSession()
+water_nn1.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=5000, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+
+print('MSE, AAD in testset, without dropout:')
+print(water_nn.predictNPMSE(testfeatures, testlabels))
+print('MSE, AAD at one op condition, without dropout:')
+print(water_nn.predictNPMSE(op_point[sco2_feature_indices].values, op_point[sco2_label_indices].values))
+
+print('MSE, AAD in testset, with dropout:')
+print(water_nn1.predictNPMSE(testfeatures, testlabels))
+print('MSE, AAD at one op condition, with dropout:')
+print(water_nn1.predictNPMSE(op_point[sco2_feature_indices].values, op_point[sco2_label_indices].values))
+
+
+plt.plot(water_nn.lossprint[0], water_nn.lossprint[1], label='no-dropout')
+plt.plot(water_nn.lossprint[0], water_nn1.lossprint[1], label='dropout')
+plt.title('Loss over Epochs')
+plt.yscale('log')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(loc=1)
+plt.savefig(fname=('./loss-vs-time'))
+plt.gcf().clear()
+
+plt.plot(water_nn.aadprint[0], water_nn.aadprint[1], label='no-dropout')
+plt.plot(water_nn.aadprint[0], water_nn1.aadprint[1], label='dropout')
+plt.title('AAD over Epochs')
+plt.ylabel('AAD in %')
+plt.xlabel('Epoch')
+plt.legend(loc=1)
+plt.savefig(fname=('./aad-vs-time'))
+plt.gcf().clear()
+
+plt.plot(water_nn.learnprint[0], water_nn.learnprint[1])
+plt.title('Learning Rate over Epochs')
+plt.ylabel('Learning Rate')
+plt.xlabel('Epoch')
+plt.savefig(fname=('./lrate-vs-time'))
+plt.gcf().clear()
+
+plt.plot(water_nn.validlossprint[0], water_nn.validlossprint[1], label='no-dropout')
+plt.plot(water_nn.validlossprint[0], water_nn1.validlossprint[1], label='dropout')
+plt.title('Loss over Epochs in validset')
+plt.yscale('log')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(loc=1)
+plt.savefig(fname=('./loss-vs-time-valid'))
+plt.gcf().clear()
+
+plt.plot(water_nn.validaadprint[0], water_nn.validaadprint[1], label='no-dropout')
+plt.plot(water_nn.validaadprint[0], water_nn1.validaadprint[1], label='dropout')
+plt.title('AAD over Epochs in validset')
+plt.ylim(ymax=10, ymin=0)
+plt.ylabel('AAD in %')
+plt.xlabel('Epoch')
+plt.legend(loc=1)
+plt.savefig(fname=('./aad-vs-time-valid'))
+plt.gcf().clear()
 
 
 
-#tuples for optimization:
-betadict = (0.01, 0.001)
-learning_dict = (0.001, 0.005)
-layerdict = (2, 3, 4, 5)
-n_nodes = 350
-actidict = (tf.nn.relu, tf.nn.sigmoid, tf.nn.tanh, tf.nn.elu)
-optimizer_dict = ( tf.train.AdamOptimizer, tf.train.AdagradOptimizer, tf.train.RMSPropOptimizer)
-#Without SGD bc. it explodes atm!
-#without momentum at this point bc. of the need for momentum parameter
-layout = []
-actfunct = []
-index=0
-
-colnames = ['RNG_nr', 'optimizer', 'activation_function', 'num_layers', 'learning_rate', 'beta', 'time_needed', 'AAD_validset', 'mse-valid']
-resultDF = pd.DataFrame(columns=colnames)
-
-for optimization_algo in optimizer_dict:
-    for actfunct_loop in actidict:
-        for layernum in layerdict:
-            for zaehltemp in range(layernum):
-                layout.append(n_nodes)
-                actfunct.append(actfunct_loop)
-            for learning_rate in learning_dict:
-                for beta in betadict:
-
-                    index +=1
-
-                    if ( (actfunct_loop == tf.nn.relu) or (actfunct_loop == tf.nn.elu)):
-                        init_method = 1
-                        init_stddev = 0.15
-                    else:
-                        init_method = 5
-                        init_stddev = 0.5
-
-                    starttime = time.time()
+sco2_predictlabels = water_nn.predictNP(testfeatures)
+sco2_bulkspec_enthalpy = testset[sco2_feature_indices[4]].values
+sco2_walltemp_dns = (sco2_bulkspec_enthalpy, testset[sco2_label_indices].values)
+sco2_walltemp_dnn = (sco2_bulkspec_enthalpy, sco2_predictlabels)
 
 
-                    water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-                    water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate)
-                    water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
-                    water_nn.layeroperations()
-                    water_nn.initializeSession()
-                    water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=1500, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+predict_train = water_nn.predictNP(trainfeatures)
+bulkspec_ent_train = trainset[sco2_feature_indices[4]].values
+walltemp_train_dns = (bulkspec_ent_train, trainset[sco2_label_indices].values)
+walltemp_train_dnn = (bulkspec_ent_train, predict_train)
 
-                    delta_t = time.time() - starttime
-
-                    directory = './gridsearch/sim-nr-' + str(index)
-                    if not os.path.exists(directory):
-                        os.makedirs(directory)
-
-                    np_aadvalidmon = np.asarray(water_nn.validaadprint)
-                    aad_last = np_aadvalidmon[1][ (np_aadvalidmon.shape[1]-1) ]
-
-                    np_msevalidmon = np.asarray(water_nn.validlossprint)
-                    mse_last = np_msevalidmon[1][ (np_msevalidmon.shape[1]-1) ]
-
-                    with open(directory + '/config.txt', 'w') as configfile:
-                        configfile.write('actfunct : ' + str(actfunct_loop) + '\n' )
-                        configfile.write('layout: ' +str(layernum) + 'hidden layers\n')
-                        configfile.write('Each layer with' + str(n_nodes) + 'neurons\n')
-                        configfile.write('Optimization algo: ' + str(optimization_algo) + '\n')
-                        configfile.write('learning rate: ' + str(learning_rate) + '\n')
-                        configfile.write('Time used for Training:' + str(delta_t) + '\n')
-                        configfile.write('Batch Size:' + str(batch_size) + '\n')
-                        configfile.write('Randomize Dataset: True\n')
-                        configfile.write('AAD in validation set:' + str(aad_last) + '\n')
-
-                    plt.plot(water_nn.lossprint[0], water_nn.lossprint[1])
-                    plt.title('Loss over Epochs')
-                    plt.yscale('log')
-                    plt.ylabel('Loss')
-                    plt.xlabel('Epoch')
-                    plt.savefig(fname=(directory + '/loss-vs-time'))
-                    plt.gcf().clear()
-
-                    plt.plot(water_nn.aadprint[0], water_nn.aadprint[1])
-                    plt.title('AAD over Epochs')
-                    plt.ylabel('AAD in %')
-                    plt.xlabel('Epoch')
-                    plt.savefig(fname=(directory + '/aad-vs-time'))
-                    plt.gcf().clear()
-
-                    plt.plot(water_nn.learnprint[0], water_nn.learnprint[1])
-                    plt.title('Learning Rate over Epochs')
-                    plt.ylabel('Learning Rate')
-                    plt.xlabel('Epoch')
-                    plt.savefig(fname=(directory + '/lrate-vs-time'))
-                    plt.gcf().clear()
-
-                    plt.plot(water_nn.validlossprint[0], water_nn.validlossprint[1])
-                    plt.title('Loss in valid set over Epochs')
-                    plt.ylabel('Loss')
-                    plt.xlabel('Epoch')
-                    plt.savefig(fname=(directory + '/validloss-vs-time'))
-                    plt.gcf().clear()
-
-                    plt.plot(water_nn.validaadprint[0], water_nn.validaadprint[1])
-                    plt.title('AAD in validset over Epochs')
-                    plt.ylabel('AAD in %')
-                    plt.xlabel('Epoch')
-                    plt.savefig(fname=(directory + '/validaad-vs-time'))
-                    plt.gcf().clear()
-
-                    predictlabels = water_nn.predictNP(testfeatures)
-                    bulkspec_enthalpy = testset['Enthalpy local h_local (new)'].values
-                    walltemp_dns = (bulkspec_enthalpy, testset[label_indices].values)
-                    walltemp_dnn = (bulkspec_enthalpy, predictlabels)
-
-                    predict_train = water_nn.predictNP(trainfeatures)
-                    bulkspec_ent_train = trainset['Enthalpy local h_local (new)'].values
-                    walltemp_train_dns = (bulkspec_ent_train, trainset[label_indices].values)
-                    walltemp_train_dnn = (bulkspec_ent_train, predict_train)
+sco2_predict_op = water_nn.predictNP(op_point[sco2_feature_indices].values)
+sco2_bulkspec_enthalpy_op =  op_point[sco2_feature_indices[4]].values
+sco2_walltemp_dns_op = ( sco2_bulkspec_enthalpy_op, op_point[sco2_label_indices].values )
+sco2_walltemp_dnn_op = ( sco2_bulkspec_enthalpy_op, sco2_predict_op)
 
 
 
-                    fig = plt.figure()
-                    ax = fig.add_subplot(1,1,1)
-                    ax.scatter(walltemp_dns[0], walltemp_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='DNS')
-                    ax.scatter(walltemp_dnn[0], walltemp_dnn[1], alpha=0.8, c='blue', edgecolors='black', marker='o', s=30, label='DNN')
-                    plt.title('Walltemp DNS vs DNN over bulk specific enthalpy')
-                    plt.legend(loc=2)
-                    plt.savefig(fname=(directory + '/temp-dns-dnn-over-hbulk'))
-                    plt.gcf().clear()
 
-                    fig4 = plt.figure()
-                    ax4 = fig4.add_subplot(1,1,1)
-                    ax4.scatter(walltemp_dnn[1], walltemp_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='noLBL')
-                    pltmin = np.amin((np.amin(walltemp_dnn[1]),np.amin(walltemp_dns[1])))
-                    pltmax = np.amax((np.amax(walltemp_dnn[1]),np.amax(walltemp_dns[1])))
-                    plt.ylim(ymax = pltmax, ymin = pltmin)
-                    plt.xlim(xmax = pltmax, xmin = pltmin)
-                    plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
-                    plt.title('Walltemp DNS vs DNN in validation set')
-                    plt.legend(loc=2)
-                    plt.savefig(fname=(directory + '/temp-dns-vs-dnn'))
-                    plt.gcf().clear()
+fig2 = plt.figure()
+ax2 = fig2.add_subplot(1,1,1)
+ax2.scatter(sco2_walltemp_dns[0], sco2_walltemp_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='DNS')
+ax2.scatter(sco2_walltemp_dnn[0], sco2_walltemp_dnn[1], alpha=0.8, c='blue', edgecolors='black', marker='o', s=30, label='DNN')
+plt.title('Walltemp DNS vs DNN over bulk specific enthalpy with sCO2')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-dnn-over-hbulk-sco2'))
+plt.gcf().clear()
 
-                    fig5 = plt.figure()
-                    ax5 = fig5.add_subplot(1,1,1)
-                    ax5.scatter(walltemp_train_dns[0], walltemp_train_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='DNS')
-                    ax5.scatter(walltemp_train_dnn[0], walltemp_train_dnn[1], alpha=0.8, c='blue', edgecolors='black', marker='o', s=30, label='DNN')
-                    plt.title('Walltemp DNS vs DNN over bulk specific enthalpy in trainset')
-                    plt.legend(loc=2)
-                    plt.savefig(fname=(directory + '/temp-dns-dnn-over-hbulk-train'))
-                    plt.gcf().clear()
 
-                    fig6 = plt.figure()
-                    ax6 = fig6.add_subplot(1,1,1)
-                    ax6.scatter(walltemp_train_dnn[1], walltemp_train_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='noLBL')
-                    pltmin = np.amin((np.amin(walltemp_train_dnn[1]),np.amin(walltemp_train_dns[1])))
-                    pltmax = np.amax((np.amax(walltemp_train_dnn[1]),np.amax(walltemp_train_dns[1])))
-                    plt.ylim(ymax = pltmax, ymin = pltmin)
-                    plt.xlim(xmax = pltmax, xmin = pltmin)
-                    plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
-                    plt.title('Walltemp DNS vs DNN in training set')
-                    plt.legend(loc=2)
-                    plt.savefig(fname=(directory + '/temp-dns-vs-dnn-train'))
-                    plt.gcf().clear()
 
-                    plt.close('all')
+fig5 = plt.figure()
+ax5 = fig5.add_subplot(1,1,1)
+ax5.scatter(sco2_walltemp_dnn[1], sco2_walltemp_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='noLBL')
+pltmin = np.amin((np.amin(sco2_walltemp_dnn[1]),np.amin(sco2_walltemp_dns[1])))
+pltmax = np.amax((np.amax(sco2_walltemp_dnn[1]),np.amax(sco2_walltemp_dns[1])))
+plt.ylim(ymax = pltmax, ymin = pltmin)
+plt.xlim(xmax = pltmax, xmin = pltmin)
+plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
+plt.title('Walltemp DNS vs DNN in validation set with sCO2')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-vs-dnn-sCO2'))
+plt.gcf().clear()
 
-                    #water_nn.saveToDisk((directory + '/tf-save'))
-                    water_nn.closeSession()
 
-                    tempdf = pd.DataFrame([[str(index), str(optimization_algo), str(actfunct_loop), str(layernum) , str(learning_rate), str(beta), str(delta_t), str(aad_last), str(mse_last)],], columns=colnames)
-                    #tempdf = pd.DataFrame([[str(index), str(optimization_algo), str(actfunct_loop), str(layernum) , str(learning_rate), str(beta), 'str(delta_t)', 10.5, 'str(mse_last)'],], columns=colnames)
-                    resultDF = resultDF.append(tempdf)
+fig3 = plt.figure()
+ax3 = fig3.add_subplot(1,1,1)
+ax3.scatter(walltemp_train_dns[0], walltemp_train_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='DNS')
+ax3.scatter(walltemp_train_dnn[0], walltemp_train_dnn[1], alpha=0.8, c='blue', edgecolors='black', marker='o', s=30, label='DNN')
+plt.title('Walltemp DNS vs DNN over bulk specific enthalpy with sCO2 in trainset')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-dnn-over-hbulk-sco2-train'))
+plt.gcf().clear()
 
-writer = pd.ExcelWriter('results.xlsx')
-resultDF.to_excel(writer)
-writer.save()
+
+
+fig8 = plt.figure()
+ax8 = fig8.add_subplot(1,1,1)
+ax8.scatter(walltemp_train_dnn[1], walltemp_train_dns[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='noLBL')
+pltmin = np.amin((np.amin(walltemp_train_dnn[1]),np.amin(walltemp_train_dns[1])))
+pltmax = np.amax((np.amax(walltemp_train_dnn[1]),np.amax(walltemp_train_dns[1])))
+plt.ylim(ymax = pltmax, ymin = pltmin)
+plt.xlim(xmax = pltmax, xmin = pltmin)
+plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
+plt.title('Walltemp DNS vs DNN in training set with sCO2')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-vs-dnn-sCO2-train'))
+plt.gcf().clear()
 
 fig9 = plt.figure()
 ax9 = fig9.add_subplot(1,1,1)
-ax9.scatter(resultDF['RNG_nr'].values, resultDF['AAD_validset'].values, alpha=0.8, c='green', edgecolors='black', marker='o', s=30, label='noLBL')
-plt.title('AAD in validset over parameter sets')
+ax9.scatter(sco2_walltemp_dns_op[0], sco2_walltemp_dns_op[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='DNS')
+ax9.scatter(sco2_walltemp_dnn_op[0], sco2_walltemp_dnn_op[1], alpha=0.8, c='blue', edgecolors='black', marker='o', s=30, label='DNN')
+plt.title('Walltemp DNS vs DNN over bulk specific enthalpy with sCO2 one op condition')
 plt.legend(loc=2)
-plt.savefig(fname=('./AAD-results'))
+plt.savefig(fname=('./temp-dns-dnn-over-hbulk-sco2-op'))
 plt.gcf().clear()
 
-#OLD:
-
-#for i in range(2,6,1):
-#g=0
-#for acttemp in actidict:
-#    g+=1
-#    for j in range(200,450,50):
-#randomize_dset = (True,)
-#b_size_test = (32, 64, 128, 256)
-#lrate_test = ( 0.01, 0.001, 0.0005, 0.00001)
-#opti_test = ( tf.train.AdamOptimizer, tf.train.AdagradOptimizer, tf.train.MomentumOptimizer, tf.train.RMSPropOptimizer)
-#stddevtpl = (0.01, 0.1, 0.5, 1)
-#beta_test = (0.01, 0.005, 0.001, 0.0005, 0.0001)
-#decaysteps_test = ( 1000, 10000)
-#decayrate_test = (0.98, 0.96, 0.94, 0.92)
-#for decay_steps in decaysteps_test:
-#i=0
-#for rand_dataset in randomize_dset:
-#for optimization_algo in opti_test:
-#for betaval in beta_test:
-#for init_stddev in stddevtpl:
-#    for init_method in range(1,7,1):
-    #for batch_size in b_size_test:
-    #for decay_rate in decayrate_test:
-    #i +=1
-    #for learning_rate in lrate_test:
-        #layout = [] #jetzt dürfen es keine tuples mehr sein!
-        #actfunct = []
-        #for temp in range(0,i,1):
-        #for i in range(len(layout)):
-            #layout.append(j)
-            #actfunct.append(acttemp)
-
-        #for batch_size in b_size_test:
-#:OLD
+fig4 = plt.figure()
+ax4 = fig4.add_subplot(1,1,1)
+ax4.scatter(sco2_walltemp_dnn_op[1], sco2_walltemp_dns_op[1], alpha=0.8, c='red', edgecolors='black', marker='^', s=30, label='noLBL')
+pltmin = np.amin((np.amin(sco2_walltemp_dnn_op[1]),np.amin(sco2_walltemp_dns_op[1])))
+pltmax = np.amax((np.amax(sco2_walltemp_dnn_op[1]),np.amax(sco2_walltemp_dns_op[1])))
+plt.ylim(ymax = pltmax, ymin = pltmin)
+plt.xlim(xmax = pltmax, xmin = pltmin)
+plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
+plt.title('Walltemp DNS vs DNN at one op condition with sCO2')
+plt.legend(loc=2)
+plt.savefig(fname=('./temp-dns-vs-dnn-sCO2-op'))
+plt.gcf().clear()
 
 
-#testsave = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-#testsave.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=0, decay_steps = decay_steps, decay_rate = decay_rate)
-#testsave.initialize(init_method = init_method, init_stddev = init_stddev)
-#testsave.layeroperations()
-#testsave.initializeSession()
-#testsave.restoreFromDisk((directory + '/tf-save'))
-#testsave.initializeSession()
 
-#print(predictlabels)
-#print(testsave.predictNP(testfeatures))
+plt.close('all')
 
-
-#water_nn = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-#water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate)
-#water_nn.trainDF(trainsetDF=trainset, feature_indices=feature_indices, label_indices=label_indices, max_epochs=2500, batch_size=32, RANDOMIZE_DATASET=True, stop_error=None, PLOTINTERACTIVE=False, STATS=True )
-#water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=2000, stop_error=None, batch_size=64, RANDOMIZE_DATASET=False, PLOTINTERACTIVE = False, STATS=True)
-#print(water_nn.predictNP(testfeatures))
-#print(testlabels)
+#water_nn.saveToDisk((directory + '/tf-save'))
+water_nn.closeSession()
