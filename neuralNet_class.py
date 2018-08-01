@@ -52,9 +52,9 @@ class neuralnet:
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
                 elif ( init_method == 6):
-                    init_stddev = ( np.sqrt(6)) / ( np.sqrt(self.n_features + self.layout[layer]) )
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
+                    init_stddev = ( np.sqrt(2)) / ( np.sqrt(self.n_features + self.layout[layer]) )
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
 
             else:
                 if ( init_method == 1):
@@ -74,9 +74,9 @@ class neuralnet:
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
                 elif ( init_method == 6):
-                    init_stddev = ( np.sqrt( 6. / ( self.n_features + self.layout[layer]) ) )
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
+                    init_stddev = ( np.sqrt( 2. / ( self.n_features + self.layout[layer]) ) )
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
 
 
         #Define output layer seperately, bc you need it in every nn!
@@ -98,8 +98,8 @@ class neuralnet:
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
         elif ( init_method == 6):
             init_stddev = ( np.sqrt( 2. / ( self.n_features + self.layout[layer]) ) )
-            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
-            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
 
 
     def build(self, optimization_algo, learning_rate, beta = 0, decay_steps = None, decay_rate = None, BATCH_NORM=False, dropout_rate=0):
