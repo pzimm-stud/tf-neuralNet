@@ -56,10 +56,14 @@ op_point = sco2_data.drop(mask[~( mask['inlet_temp'] & mask['heat_flux'] & mask[
 sco2_data = sco2_data.drop(op_point.index)
 
 #Split the dataset into test train and validation set
-trainset = sco2_data.sample(frac=0.8)
-testset = sco2_data.drop(trainset.index)
-validset = trainset.sample(frac=0.2)
-trainset = trainset.drop(validset.index)
+#trainset = sco2_data.sample(frac=0.8)
+#testset = sco2_data.drop(trainset.index)
+#validset = trainset.sample(frac=0.2)
+#trainset = trainset.drop(validset.index)
+
+trainset = pd.read_excel('trainset.xlsx')
+validset = pd.read_excel('validset.xlsx')
+testset = pd.read_excel('testset.xlsx')
 
 #Preprocess the data (StandardScaling)
 mean = trainset[sco2_feature_indices].mean()
@@ -68,7 +72,7 @@ std = trainset[sco2_feature_indices].std()
 trainset[sco2_feature_indices] = (trainset[sco2_feature_indices] - mean )/  std
 testset[sco2_feature_indices] = (testset[sco2_feature_indices] - mean )/  std
 validset[sco2_feature_indices] = (validset[sco2_feature_indices] - mean )/  std
-op_point[sco2_feature_indices] = (op_point[sco2_feature_indices] - mean )/ std
+#op_point[sco2_feature_indices] = (op_point[sco2_feature_indices] - mean )/ std
 
 
 #Import and preprocess the data (as DataFrame):
@@ -95,20 +99,22 @@ water_nn.build(optimization_algo=optimization_algo, learning_rate=learning_rate,
 water_nn.initialize(init_method = init_method, init_stddev = init_stddev)
 water_nn.layeroperations()
 water_nn.initializeSession()
-#water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=1500, validfeatures = validfeatures , validlabels = validlabels, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=5000, validfeatures = validfeatures , validlabels = validlabels, stop_error=2, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
 
-#water_nn.saveToDisk(path='./savetest/water-nn')
-#water_nn.saveToDisk(path='./savetest/water-nn-init')
-
-water_nn.restoreFromDisk(path='./savetest/water-nn')
+#water_nn.saveToDisk(path='./save/sco2')
 
 
-print(op_point[sco2_feature_indices].values)
-print(water_nn.predictNP(op_point[sco2_feature_indices].values))
-print(water_nn.predictNPMSE(op_point[sco2_feature_indices].values, op_point[sco2_label_indices].values))
+#water_nn.restoreFromDisk(path='./save/sco2')
+
+
+
+
+#print(op_point[sco2_feature_indices].values)
+#print(water_nn.predictNP(op_point[sco2_feature_indices].values))
+#print(water_nn.predictNPMSE(op_point[sco2_feature_indices].values, op_point[sco2_label_indices].values))
 
 #print(water_nn.predictNP(testfeatures))
-#print(water_nn.predictNPMSE(testfeatures, testlabels))
+print(water_nn.predictNPMSE(testfeatures, testlabels))
 
 #water_nn.saveToDisk(path='./savetest/water-nn-restored')
 

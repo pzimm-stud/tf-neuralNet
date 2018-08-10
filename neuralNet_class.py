@@ -192,7 +192,13 @@ class neuralnet:
         elif ( (validfeatures == None) or (validlabels == None) ):
             VALIDATION = False
 
-        #Methode nimmt numpy array an, KEIN! dataframe!!!
+        if ((VALIDATION) & (stop_error != None)):
+            STOPCOND = True
+        else:
+            print("Error! If stop_error is set you must provide a validation set!")
+            STOPCOND = False
+
+
         #Hier auf jeden Fall überprüfungen einbauen ob das set die anzahl der features hat, labels muss auch passen und ob trainlabels und trainfeatures gleich lang sind
 
         if (RUNCONDITIONS ):
@@ -204,6 +210,11 @@ class neuralnet:
             validlossmon = [0]
             validaadmon = [0]
             zaehl = 0
+
+            best_value = {"value" : 0, "epoch" : 0, 'aad' : 0}
+            counter_stopepoch = 0
+            stopepochs = 300
+
 
             for epoch in range(max_epochs):
                 if (RANDOMIZE_DATASET):
@@ -247,6 +258,26 @@ class neuralnet:
                         if (self.DROPOUT): self.training_droput = True
                         print('Cost in validation set: {:.4f}, current AAD in validation set: {:.2f}'.format(validcost, validaad) )
 
+                        if (epoch == 0):
+                            best_value['value']=validcost
+                        if (STOPCOND & (epoch > 400 ) ):
+                            if ( (best_value['value'] - validcost) > 0):
+                                self.saveToDisk(path='B:/temp/early-stopping')
+                                best_value['value'] = validcost
+                                best_value['epoch'] = epoch
+                                best_value['aad'] = validaad
+                                counter_stopepoch = 0
+                            elif (counter_stopepoch == stopepochs):
+                                print('Best cost: ' + str(best_value['value']) + ' in epoch: ' + str(best_value['epoch']) + ' AAD: ' + str(best_value['aad']))
+                                self.restoreFromDisk(path='B:/temp/early-stopping')
+                                break
+                            counter_stopepoch += 1
+
+                        #To-do: prozentuale änderung statt nur zu schauen ob kosten kleiner sind!
+
+
+
+
                 else:
                     print('Error! batch_size must either be None or greater 0')
 
@@ -280,73 +311,14 @@ class neuralnet:
 
 
     def trainDF(self, trainsetDF, feature_indices, label_indices, max_epochs, validsetDF = None, batch_size=None, RANDOMIZE_DATASET=True, stop_error=None, PLOTINTERACTIVE=False, STATS=True ):
-
+        #Only for compatibility
         if(self.BATCH_NORM): self.training = True
         CONSISTENT_TYPE = (type(trainsetDF).__module__ == 'pandas.core.frame' )
 
-        #Methode nimmt pandas DataFrame!
-        pos = [0]
-        lossmon = [0]
-        aadmon = [0]
-        learnmon = [0]
-        zaehl = 0
+        trainfeatures = trainsetDF[feature_indices].values
+        trainlabels = trainsetDF[feature_indices].values
+        trainNP(self, trainfeatures, trainlabels, max_epochs, validfeatures = None , validlabels = None, stop_error=None, batch_size=batch_size, RANDOMIZE_DATASET=RANDOMIZE_DATASET, PLOTINTERACTIVE = PLOTINTERACTIVE, STATS=STATS )
 
-        for epoch in range(max_epochs):
-            if (RANDOMIZE_DATASET):
-                traintemp = trainsetDF.sample(n=(trainsetDF.shape[0])) #randomize the train data every epoch
-            else:
-                traintemp = trainsetDF;
-
-            epoch_loss = 0
-
-            if (batch_size == None): #Do FullBatch
-
-                epoch_x = traintemp[feature_indices].values
-                epoch_y = traintemp[label_indices].values
-                _, c = self.sess.run([self.optimizer, self.cost], feed_dict = {self.x: epoch_x, self.y: epoch_y})
-                epoch_loss += c
-
-            elif(batch_size > 0): #Do Mini Batch with batch_size > 0
-
-                for i in range(int(traintemp.shape[0]/batch_size)):
-                    #Laden der features in ein array x und y für features und labels
-                    epoch_x = traintemp[feature_indices].values[i*batch_size : (i+1)*batch_size]
-                    epoch_y = traintemp[label_indices].values[i*batch_size : (i+1)*batch_size]
-                    _, c = self.sess.run([self.optimizer, self.cost], feed_dict = {self.x: epoch_x, self.y: epoch_y})
-                    epoch_loss += c
-
-                if ((traintemp.shape[0] % batch_size) != 0): #iterate over last examples smaller than batch size
-                    epoch_x = traintemp[feature_indices].values[int(traintemp.shape[0]/batch_size):] #cut from last full batch to end
-                    epoch_y = traintemp[label_indices].values[int(traintemp.shape[0]/batch_size):]
-                    _, c = self.sess.run([self.optimizer, self.cost], feed_dict = {self.x: epoch_x, self.y: epoch_y})
-                    epoch_loss += c
-
-                #After last minibatch iteration calculate aad over the whole testset!
-                aad = self.sess.run([self.aad], feed_dict = {self.x : traintemp[feature_indices].values, self.y: traintemp[label_indices].values})
-                if (self.USEDECAY):
-                    print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess)))
-
-            else:
-                print('Error! batch_size must either be None or greater 0')
-
-            if (STATS):
-                if(epoch == 5):
-                    pos = [0]
-                    lossmon = [epoch_loss]
-                    aadmon = [aad]
-                    learnmon = [self.learning_rate.eval(session=self.sess)]
-
-                print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}%'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad) )
-                if((epoch % 5) == 0):
-                    zaehl+=5
-                    pos.append(zaehl)
-                    lossmon.append(epoch_loss)
-                    aadmon.append(aad)
-                    learnmon.append(self.learning_rate.eval(session=self.sess))
-
-                self.lossprint = (pos,lossmon)
-                self.aadprint = (pos,aad)
-                self.learnprint = (pos,learnmon)
 
     def predictNP(self, testfeatures):
         if (self.BATCH_NORM): self.training = False
