@@ -114,6 +114,9 @@ water_nn.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epoch
 #print(water_nn.predictNPMSE(op_point[sco2_feature_indices].values, op_point[sco2_label_indices].values))
 
 #print(water_nn.predictNP(testfeatures))
+print('Validation Set:')
+print(water_nn.predictNPMSE(validfeatures, validlabels))
+print('Testset:')
 print(water_nn.predictNPMSE(testfeatures, testlabels))
 
 #water_nn.saveToDisk(path='./savetest/water-nn-restored')
