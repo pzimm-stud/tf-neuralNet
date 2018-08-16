@@ -210,6 +210,7 @@ class neuralnet:
             validlossmon = [0]
             validaadmon = [0]
             zaehl = 0
+            self.validDNSvsDNNmon = [0]
 
             best_value = {"value" : 0, "epoch" : 0, 'aad' : 0}
             counter_stopepoch = 0
@@ -289,6 +290,7 @@ class neuralnet:
                         learnmon = [self.learning_rate.eval(session=self.sess)]
                         validlossmon = [validcost]
                         validaadmon = [validaad]
+                        self.validDNSvsDNNmon = [ [validlabels, self.predictNP(validfeatures)] ]
 
                     print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
 
@@ -300,6 +302,8 @@ class neuralnet:
                         learnmon.append(self.learning_rate.eval(session=self.sess))
                         validlossmon.append(validcost)
                         validaadmon.append(validaad)
+                        self.validDNSvsDNNmon.append([validlabels, self.predictNP(validfeatures)])
+
 
                     self.lossprint = (pos,lossmon)
                     self.aadprint = (pos,aadmon)
@@ -355,5 +359,87 @@ class neuralnet:
         saver.restore(self.sess, self.path)
         print("Model restored.")
 
-    #def lossGraph(self):
-        #Hier Graphen mit Lossprint erstellen, posprocess seperat machen, nicht in der klasse! self.lossprint ist ja da!
+    def trainLossGraph(self, path, filename='loss-vs-epochs', label='', logscale=False):
+        plt.plot(self.lossprint[0], self.lossprint[1], label=label)
+        plt.title('Loss over epochs')
+        if logscale: plt.yscale('log')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(loc=1)
+        plt.savefig(fname=(path + '/' + filename))
+        plt.gcf().clear()
+        plt.close()
+
+    def trainAADGraph(self, path, filename='aad-vs-epochs', label='', ymax=10):
+        plt.plot(self.aadprint[0], self.aadprint[1], label=label)
+        plt.title('AAD over epochs')
+        plt.ylim(ymax=ymax, ymin=0)
+        plt.ylabel('AAD in %')
+        plt.xlabel('Epoch')
+        plt.legend(loc=1)
+        plt.savefig(fname=(path + '/' + filename))
+        plt.gcf().clear()
+        plt.close()
+
+    def learningRateGraph(self, path, filename='lrate-vs-epochs', label='', logscale=False):
+        plt.plot(self.learnprint[0], self.learnprint[1])
+        plt.title('Learningrate over epochs')
+        if logscale: plt.yscale('log')
+        plt.ylabel('Learning Rate')
+        plt.xlabel('Epoch')
+        plt.savefig(fname=(path + '/' + filename))
+        plt.gcf().clear()
+        plt.close()
+
+    def validLossGraph(self, path, filename='validloss-vs-epochs', label='', logscale=False):
+        #assert self.VALIDATION == True
+        plt.plot(self.validlossprin[0], self.validlossprin[1], label=label)
+        plt.title('Loss over epochs in validation set')
+        if logscale: plt.yscale('log')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(loc=1)
+        plt.savefig(fname=(path + '/' + filename))
+        plt.gcf().clear()
+        plt.close()
+
+    def validAADGraph(self, path, filename='validaad-vs-epochs', label='', ymax=10):
+        plt.plot(self.validaadprint[0], self.validaadprint[1], label=label)
+        plt.title('AAD over epochs in validation set')
+        plt.ylim(ymax=ymax, ymin=0)
+        plt.ylabel('AAD in %')
+        plt.xlabel('Epoch')
+        plt.legend(loc=1)
+        plt.savefig(fname=(path + '/' + filename))
+        plt.gcf().clear()
+        plt.close()
+
+    def scatterGraph(self, path, xvals, yvals, cntrl, filename='scatterGraph', title='no title', xlabel='xlabel', ylabel='ylabel', xlim=None, ylim=None, DIAGLINE=True):
+        #Accepts xvals and yvals as tuple with numpy arrays inside
+        assert ( len(xvals) == len(yvals) == len(cntrl) )
+        for i in range(len(xvals)):
+            assert( xvals[i].shape[0] == yvals[i].shape[0] )
+
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1)
+        tempmin = []
+        tempmax = []
+        for i in range(len(xvals)):
+            ax.scatter(xvals[i], yvals[i], alpha=0.8, c=cntrl[i]['color'], edgecolors=cntrl[i]['edgecolor'], marker=cntrl[i]['marker'], s=30, label=cntrl[i]['label'])
+            tempmin.append(np.amin((np.amin(xvals[i]),np.amin(yvals[i]))))
+            tempmax.append(np.amax((np.amax(xvals[i]),np.amax(yvals[i]))))
+        pltmin = np.amin(np.asarray(tempmin))
+        pltmax = np.amax(np.asarray(tempmax))
+        if ylim is not None : plt.ylim(ymax =  ylim[1], ymin = ylim[0])
+        if xlim is not None : plt.xlim(xmax =  xlim[1], xmin = xlim[0])
+        if DIAGLINE:
+            plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
+            plt.ylim(ymax = pltmax * 1.01 , ymin = pltmin * 0.99)
+            plt.xlim(xmax = pltmax * 1.01 , xmin = pltmin * 0.99)
+        plt.title(title)
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
+        plt.legend(loc=2)
+        plt.savefig(fname=(path + '/' + filename))
+        plt.gcf().clear()
+        plt.close()
