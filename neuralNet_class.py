@@ -212,9 +212,9 @@ class neuralnet:
             zaehl = 0
             self.validDNSvsDNNmon = [0]
 
-            best_value = {"value" : 0, "epoch" : 0, 'aad' : 0}
+            self.best_value = {"value" : 0, "epoch" : 0, 'aad' : 0}
             counter_stopepoch = 0
-            stopepochs = 300
+            stopepochs = 250
 
 
             for epoch in range(max_epochs):
@@ -260,16 +260,16 @@ class neuralnet:
                         print('Cost in validation set: {:.4f}, current AAD in validation set: {:.2f}'.format(validcost, validaad) )
 
                         if (epoch == 0):
-                            best_value['value']=validcost
+                            self.best_value['value']=validcost
                         if (STOPCOND & (epoch > 400 ) ):
-                            if ( (best_value['value'] - validcost) > 0):
+                            if ( (self.best_value['value'] - validcost) > 0):
                                 self.saveToDisk(path='B:/temp/early-stopping')
-                                best_value['value'] = validcost
-                                best_value['epoch'] = epoch
-                                best_value['aad'] = validaad
+                                self.best_value['value'] = validcost
+                                self.best_value['epoch'] = epoch
+                                self.best_value['aad'] = validaad
                                 counter_stopepoch = 0
                             elif (counter_stopepoch == stopepochs):
-                                print('Best cost: ' + str(best_value['value']) + ' in epoch: ' + str(best_value['epoch']) + ' AAD: ' + str(best_value['aad']))
+                                print('Best cost: ' + str(self.best_value['value']) + ' in epoch: ' + str(self.best_value['epoch']) + ' AAD: ' + str(self.best_value['aad']))
                                 self.restoreFromDisk(path='B:/temp/early-stopping')
                                 break
                             counter_stopepoch += 1
@@ -345,6 +345,7 @@ class neuralnet:
 
     def closeSession(self):
         self.sess.close()
+        tf.reset_default_graph()
 
         #Evtl. saver implementieren inn eigene Methode! Save und resume! schauen wie es mit tf.train.Saver() funktionier wo gehört der hin! wie ist es mit constructor wenn der differiert?
     def saveToDisk (self, path):
@@ -414,7 +415,7 @@ class neuralnet:
         plt.gcf().clear()
         plt.close()
 
-    def scatterGraph(self, path, xvals, yvals, cntrl, filename='scatterGraph', title='no title', xlabel='xlabel', ylabel='ylabel', xlim=None, ylim=None, DIAGLINE=True):
+    def scatterGraph(self, path, xvals, yvals, cntrl, filename='scatterGraph', title='no title', xlabel='xlabel', ylabel='ylabel', xlim=None, ylim=None, loc=2 DIAGLINE=True):
         #Accepts xvals and yvals as tuple with numpy arrays inside
         assert ( len(xvals) == len(yvals) == len(cntrl) )
         for i in range(len(xvals)):
@@ -439,7 +440,7 @@ class neuralnet:
         plt.title(title)
         plt.ylabel(ylabel)
         plt.xlabel(xlabel)
-        plt.legend(loc=2)
+        plt.legend(loc=loc)
         plt.savefig(fname=(path + '/' + filename))
         plt.gcf().clear()
         plt.close()
