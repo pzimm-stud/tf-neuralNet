@@ -34,9 +34,9 @@ def PrepareDF(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
         testset[feature_indices] = (testset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
         if(testTrainValidSplit):
             validset[feature_indices] = (validset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
-            return trainset,testset,validset
+            return trainset,testset,validset,min,max
         else:
-            return trainset,testset
+            return trainset,testset,min,max
 
     elif ( (not(scaleMinMax)) & scaleStandard):
         mean = trainset[feature_indices].mean()
@@ -48,9 +48,9 @@ def PrepareDF(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
 
         if(testTrainValidSplit):
             validset[feature_indices] = (validset[feature_indices] - mean )/  std
-            return trainset,testset,validset
+            return trainset,testset,validset,mean,std
         else:
-            return trainset,testset
+            return trainset,testset,mean,std
 
 
     elif ( (not(scaleMinMax)) & (not(scaleStandard)) ):
@@ -62,6 +62,21 @@ def PrepareDF(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
 
     else:
         print('Error! Both ScaleMinMax AND scaleStandard are set!')
+
+def scaleBackMinMaxDF(dataDF, feature_indices, min, max):
+    return 0
+
+def scaleBackStdDF(dataDF, feature_indices, mean, std):
+    return dataDF[feature_indices] * std + mean
+
+def scaleBackStdNP(data, mean, std):
+    assert (data.shape[1] == mean.shape[0] == std.shape[0])
+    for i in range(data.shape[1]):
+        data[:,i] = data[:,1] * std[i] + mean[i]
+    return data
+
+def scaleBackMinMaxNP(data, min, max):
+    return 0
 
 def PrepareNP(dataDF, feature_indices, label_indices, frac, scaleStandard = False, scaleMinMax=False, Range = {'min' : 0.0, 'max' : 1.0}, testTrainSplit = True, testTrainValidSplit = False):
 
@@ -92,9 +107,9 @@ def PrepareNP(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
         testset[feature_indices] = (testset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
         if(testTrainValidSplit):
             validset[feature_indices] = (validset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
-            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, validset[feature_indices].values, validset[label_indices].values
+            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, validset[feature_indices].values, validset[label_indices].values, min.values, max.values
         else:
-            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values
+            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, min.values, max.values
 
     elif ( (not(scaleMinMax)) & scaleStandard):
         mean = trainset[feature_indices].mean()
@@ -106,9 +121,9 @@ def PrepareNP(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
 
         if(testTrainValidSplit):
             validset[feature_indices] = (validset[feature_indices] - mean )/  std
-            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, validset[feature_indices].values, validset[label_indices].values
+            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, validset[feature_indices].values, validset[label_indices].values, mean.values, std.values
         else:
-            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values
+            return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, mean.values, std.values
 
 
     elif ( (not(scaleMinMax)) & (not(scaleStandard)) ):
