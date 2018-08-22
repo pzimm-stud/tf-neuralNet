@@ -71,9 +71,8 @@ def scaleBackStdDF(dataDF, feature_indices, mean, std):
 
 def scaleBackStdNP(data, mean, std):
     assert (data.shape[1] == mean.shape[0] == std.shape[0])
-    for i in range(data.shape[1]):
-        data[:,i] = data[:,1] * std[i] + mean[i]
-    return data
+    return data * std + mean
+
 
 def scaleBackMinMaxNP(data, min, max):
     return 0
