@@ -415,7 +415,7 @@ class neuralnet:
         plt.gcf().clear()
         plt.close()
 
-    def scatterGraph(self, path, xvals, yvals, cntrl, filename='scatterGraph', title='no title', xlabel='xlabel', ylabel='ylabel', xlim=None, ylim=None, loc=2 DIAGLINE=True):
+    def scatterGraph(self, path, xvals, yvals, cntrl, filename='scatterGraph', title='no title', xlabel='xlabel', ylabel='ylabel', xlim=None, ylim=None, loc=2, DIAGLINE=True):
         #Accepts xvals and yvals as tuple with numpy arrays inside
         assert ( len(xvals) == len(yvals) == len(cntrl) )
         for i in range(len(xvals)):
