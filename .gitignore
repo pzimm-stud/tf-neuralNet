@@ -2,4 +2,8 @@
 *.xlsx
 *.xls
 *.csv
+#Ignore the checkpoints aswell
+savecheckpoint*
+checkpoint
+#Ignore python caches
 __pycache__

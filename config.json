@@ -1,0 +1,19 @@
+{
+    "n_features": 5,
+    "n_labels": 1,
+    "layout": [500, 500, 500, 500, 500],
+    "actfunct": ["tanh", "tanh", "tanh", "tanh", "tanh"],
+    "optimization_algorithm" : "Adam",
+    "batch_size" : 32,
+    "beta": 0.001,
+    "learning_rate" : 0.005,
+    "decay_steps" : 5000,
+    "decay_rate" : 0.96,
+    "init_method" : 6,
+    "init_stddev" : 0.5,
+    "dropout_rate" : 0.5,
+    "BATCH_NORMALIZATION" : true,
+    "max_epochs" : 5000,
+    "colnames_features" : ["Heat Flux q_local (new)", "Enthalpy local h_local (new)", "Pressure p (new)", "Mass Flux G (new)", "Diameter Inside d_in (new)"],
+    "colnames_labels" : ["Wall Temperature T_wall (new)"]
+}

@@ -102,7 +102,7 @@ class neuralnet:
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
 
 
-    def build(self, optimization_algo, learning_rate, beta = 0, decay_steps = None, decay_rate = None, BATCH_NORM=False, dropout_rate=0):
+    def build(self, optimization_algo, learning_rate, beta = 0, scaledict=None, rangedict=None, decay_steps = None, decay_rate = None, BATCH_NORM=False, dropout_rate=0):
         self.x = tf.placeholder('float',[None, self.n_features])
         self.y = tf.placeholder('float',[None, self.n_labels])
         self.BATCH_NORM = BATCH_NORM
@@ -127,6 +127,34 @@ class neuralnet:
         else:
             self.learning_rate = learning_rate
 
+         #Save the values in scaledict as tf.Variable (either mean and stddev or min max) to restore it later
+        if (scaledict is None):
+            self.meantensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='mean')
+            self.stdtensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='std')
+            self.maxtensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='min')
+            self.mintensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='max')
+        else:
+            if ( ( scaledict['mean'] is not None ) and ( scaledict['stddev'] is not None) ):
+                self.meantensor = tf.Variable( tf.convert_to_tensor(scaledict['mean'], dtype=tf.float32) , name='mean')
+                self.stdtensor = tf.Variable( tf.convert_to_tensor(scaledict['stddev'], dtype=tf.float32) , name='std')
+                self.maxtensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='min')
+                self.mintensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='max')
+
+            if ( ( scaledict['max'] is not None ) and ( scaledict['min'] is not None) ):
+                self.meantensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='mean')
+                self.stdtensor = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='std')
+                self.maxtensor = tf.Variable( tf.convert_to_tensor(scaledict['min'], dtype=tf.float32) , name='min')
+                self.mintensor = tf.Variable( tf.convert_to_tensor(scaledict['max'], dtype=tf.float32) , name='max')
+
+        #Save the values in rangedict as tf.Variable in order to save it in a checkpoint and restore it later
+        if (rangedict is not None):
+             self.rangemax = tf.Variable( tf.convert_to_tensor(rangedict['max'], dtype=tf.float32) , name='rangemax')
+             self.rangemin = tf.Variable( tf.convert_to_tensor(rangedict['min'], dtype=tf.float32) , name='rangemin')
+             self.rangenames = tf.Variable( tf.convert_to_tensor(rangedict['feature-names'], dtype=tf.string) , name='rangenames')
+        else:
+             self.rangemax = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='rangemax')
+             self.rangemin = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='rangemin')
+             self.rangenames = tf.Variable( tf.constant('Null', shape=[self.n_features], dtype=tf.string) , name='rangenames')
 
     def layeroperations(self):
         templayer = []
@@ -187,9 +215,10 @@ class neuralnet:
         CONSISTENT_TYPE = ((type(trainfeatures).__module__ == 'numpy' ) & (type(trainlabels).__module__ == 'numpy' ))
         RUNCONDITIONS = CONSISTENT_LBL & CONSISTENT_FT & CONSISTENT_LENGTH & CONSISTENT_TYPE
 
-        if (  (validfeatures.shape[0]) == (validlabels.shape[0]) ):
-            VALIDATION = True
-        elif ( (validfeatures == None) or (validlabels == None) ):
+        if ((validfeatures is not None) and (validlabels is not None)):
+            if (  (validfeatures.shape[0]) == (validlabels.shape[0]) ):
+                VALIDATION = True
+        else:
             VALIDATION = False
 
         if ((VALIDATION) & (stop_error != None)):
@@ -207,14 +236,15 @@ class neuralnet:
             lossmon = [0]
             aadmon = [0]
             learnmon = [0]
-            validlossmon = [0]
-            validaadmon = [0]
+            if (VALIDATION):
+                validlossmon = [0]
+                validaadmon = [0]
             zaehl = 0
             self.validDNSvsDNNmon = [0]
 
             self.best_value = {"value" : 0, "epoch" : 0, 'aad' : 0}
             counter_stopepoch = 0
-            stopepochs = 250
+            stopepochs = 600
 
 
             for epoch in range(max_epochs):
@@ -261,22 +291,18 @@ class neuralnet:
 
                         if (epoch == 0):
                             self.best_value['value']=validcost
-                        if (STOPCOND & (epoch > 400 ) ):
+                        if (STOPCOND & (epoch > 1000 ) ):
                             if ( (self.best_value['value'] - validcost) > 0):
-                                self.saveToDisk(path='B:/temp/early-stopping')
+                                self.saveToDisk(path='./temp/early-stopping')
                                 self.best_value['value'] = validcost
                                 self.best_value['epoch'] = epoch
                                 self.best_value['aad'] = validaad
                                 counter_stopepoch = 0
                             elif (counter_stopepoch == stopepochs):
                                 print('Best cost: ' + str(self.best_value['value']) + ' in epoch: ' + str(self.best_value['epoch']) + ' AAD: ' + str(self.best_value['aad']))
-                                self.restoreFromDisk(path='B:/temp/early-stopping')
+                                self.restoreFromDisk(path='./temp/early-stopping')
                                 break
                             counter_stopepoch += 1
-
-                        #To-do: prozentuale änderung statt nur zu schauen ob kosten kleiner sind!
-
-
 
 
                 else:
@@ -288,9 +314,10 @@ class neuralnet:
                         lossmon = [epoch_loss]
                         aadmon = [aadepc]
                         learnmon = [self.learning_rate.eval(session=self.sess)]
-                        validlossmon = [validcost]
-                        validaadmon = [validaad]
-                        self.validDNSvsDNNmon = [ [validlabels, self.predictNP(validfeatures)] ]
+                        if (VALIDATION):
+                            validlossmon = [validcost]
+                            validaadmon = [validaad]
+                            self.validDNSvsDNNmon = [ [validlabels, self.predictNP(validfeatures)] ]
 
                     print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
 
@@ -300,16 +327,18 @@ class neuralnet:
                         lossmon.append(epoch_loss)
                         aadmon.append(aadepc)
                         learnmon.append(self.learning_rate.eval(session=self.sess))
-                        validlossmon.append(validcost)
-                        validaadmon.append(validaad)
-                        self.validDNSvsDNNmon.append([validlabels, self.predictNP(validfeatures)])
+                        if (VALIDATION):
+                            validlossmon.append(validcost)
+                            validaadmon.append(validaad)
+                            self.validDNSvsDNNmon.append([validlabels, self.predictNP(validfeatures)])
 
 
                     self.lossprint = (pos,lossmon)
                     self.aadprint = (pos,aadmon)
                     self.learnprint = (pos,learnmon)
-                    self.validlossprint = (pos,validlossmon)
-                    self.validaadprint = (pos,validaadmon)
+                    if (VALIDATION):
+                        self.validlossprint = (pos,validlossmon)
+                        self.validaadprint = (pos,validaadmon)
 
 
 
