@@ -86,6 +86,8 @@ BATCH_NORM = config_data['BATCH_NORMALIZATION']
 max_epochs = config_data['max_epochs']
 colnames_features = config_data['colnames_features']
 colnames_labels = config_data['colnames_labels']
+stop_epochs = config_data['stop_epochs']
+minEpochEarlyStop = config_data['min_Epoch_Early_Stop']
 
 #Generate actfunct and optimization algo:
 trans_act = {'sigmoid' : tf.nn.sigmoid, 'softmax' : tf.nn.softmax, 'relu': tf.nn.relu, 'tanh' : tf.nn.tanh, 'elu': tf.nn.elu}
@@ -161,6 +163,8 @@ if (args.train and not(args.predict) ):
         #calculate mean and std
         mean = trainset_temp[colnames_features].mean()
         std = trainset_temp[colnames_features].std()
+        #Save the range of the features in order to print a warning in case of training
+        rangedict = {'min' : trainset_temp[colnames_features].min().values, 'max' : trainset_temp[colnames_features].max().values, 'feature-names' : colnames_features }
         #Scale the trainset:
         trainset_temp[colnames_features] = (trainset_temp[colnames_features] - mean) / std
         #Convert the set to numpy arrays for training:
@@ -168,8 +172,6 @@ if (args.train and not(args.predict) ):
         trainlabels = trainset_temp[colnames_labels].values
         #Save the scales in order to pass it to the neuralNet
         scaledict = {'mean' : mean.values, 'stddev' : std.values, 'max' : None, 'min' : None}
-        #Save the range of the features in order to print a warning in case of training
-        rangedict = {'min' : trainset_temp[colnames_features].min().values, 'max' : trainset_temp[colnames_features].max().values, 'feature-names' : colnames_features }
         #Check, if a validset is given:
         if args.path_validset[0] is not None:
             validset_temp = pd.read_excel(args.path_validset[0])
@@ -213,7 +215,7 @@ if (args.train and not(args.predict) ):
     Net.initialize(init_method = init_method, init_stddev = init_stddev)
     Net.layeroperations()
     Net.initializeSession()
-    Net.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=max_epochs, validfeatures = validfeatures , validlabels = validlabels, stop_error=2, batch_size=batch_size, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True)
+    Net.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=max_epochs, validfeatures = validfeatures , validlabels = validlabels, stop_epochs=stop_epochs, minEpochEarlyStop=minEpochEarlyStop, batch_size=batch_size, RANDOMIZE_DATASET=True, STATS=True)
 
     #Make sure the path exists:
     #if not os.path.exists():
@@ -223,7 +225,3 @@ if (args.train and not(args.predict) ):
     #Do some of the graphing stuff here:
 
 #Performance measure? give testset and checkpoint or train and testset and return mse or aad
-
-#Test if we want to preprocess, then test and finally predict:
-if (args.train and args.predict and args.preprocess):
-    print("test")

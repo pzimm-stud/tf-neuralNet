@@ -36,71 +36,93 @@ class neuralnet:
         for layer in range(len(self.layout)):
             if(layer==0): #first layer needs n_features as first dimension
                 if ( init_method == 1):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.n_features, self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]])) #initialise the bias as constant near zer
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.n_features, self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
                 elif ( init_method == 2):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]])) #initialise the bias as constant near zer
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
                 elif ( init_method == 3):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
                 elif ( init_method == 4):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.n_features, self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
-                elif ( init_method == 5):
-                    init_stddev = 1/( np.sqrt(self.n_features))
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
-                elif ( init_method == 6):
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.n_features, self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 5): #Initialization according to He-et-al
+                    init_stddev =  np.sqrt(2/self.n_features)
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 6): #Xavier initialization according to tensorflow documentation with truncated normal distribution
                     init_stddev = ( np.sqrt(2)) / ( np.sqrt(self.n_features + self.layout[layer]) )
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.n_features, self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 7): #Initialization according to Xavier, first part of the paper
+                    variance = np.sqrt(1/self.n_features)
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_uniform([self.n_features, self.layout[layer]], minval=-variance, maxval=variance), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 8): #Initialization according to Xavier, second part of the paper called "normalized initialization"
+                    variance = ( np.sqrt(6) / ( np.sqrt(self.n_features + self.layout[layer]) ))
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_uniform([self.n_features, self.layout[layer]], minval=(-variance), maxval=variance), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
 
             else:
                 if ( init_method == 1):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]])) #initialise the bias as constant near zer
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
                 elif ( init_method == 2):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]])) #initialise the bias as constant near zer
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.1, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
                 elif ( init_method == 3):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
-                elif ( init_method == 4):
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
-                elif ( init_method == 5):
-                    init_stddev = 1./( np.sqrt(self.n_features))
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev)) #initialise the weights random with stddev
-                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]])) #initialise the bias as constant near zer
-                elif ( init_method == 6):
-                    init_stddev = ( np.sqrt( 2. / ( self.n_features + self.layout[layer]) ) )
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
                     self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
-
+                elif ( init_method == 4):
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 5): #Initialization according to He-et-al
+                    init_stddev =  np.sqrt(2/self.layout[layer-1])
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 6): #Xavier initialization according to tensorflow documentation with truncated normal distribution
+                    init_stddev = ( np.sqrt( 2. / ( self.layout[layer-1] + self.layout[layer]) ) )
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.truncated_normal([self.layout[layer-1], self.layout[layer]],stddev=init_stddev), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 7): #Initialization according to Xavier, first part of the paper
+                    variance = np.sqrt(1/self.layout[layer-1])
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_uniform([self.layout[layer-1], self.layout[layer]], minval=-variance, maxval=variance), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
+                elif ( init_method == 8): #Initialization according to Xavier, second part of the paper called "normalized initialization"
+                    variance = ( np.sqrt(6) / ( np.sqrt(self.layout[layer-1] + self.layout[layer]) ) )
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] = tf.Variable(tf.random_uniform([self.layout[layer-1], self.layout[layer]], minval=-variance, maxval=variance), name=('hi-lay-' + str(layer+1) + '-weights' )) #initialise the weights random with stddev
+                    self.layerdict[ ('hi-lay-' + str(layer+1) + '-biases' ) ] = tf.Variable(tf.constant(0.0, shape=[self.layout[layer]]), name=('hi-lay-' + str(layer+1) + '-biases' )) #initialise the bias as constant near zer
 
         #Define output layer seperately, bc you need it in every nn!
         if ( init_method == 1):
-            self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
-            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.1, shape=[self.n_labels])) #initialise the bias as constant near zer
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.1, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
         elif ( init_method == 2):
-            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
-            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.1, shape=[self.n_labels])) #initialise the bias as constant near zer
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.1, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
         elif ( init_method == 3):
-            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
-            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
-        elif ( init_method == 4):
-            self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
-            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
-        elif ( init_method == 5):
-            init_stddev = 1./( np.sqrt(self.n_features))
-            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev)) #initialise the weights random with stddev
-            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels])) #initialise the bias as constant near zer
-        elif ( init_method == 6):
-            init_stddev = ( np.sqrt( 2. / ( self.n_features + self.layout[layer]) ) )
             self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev), name='output-weights') #initialise the weights random with stddev
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
-
+        elif ( init_method == 4):
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
+        elif ( init_method == 5): #Initialization according to He-et-al
+            init_stddev =  np.sqrt(2/self.layout[layer])
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
+        elif ( init_method == 6): #Xavier initialization according to tensorflow documentation with truncated normal distribution
+            init_stddev = ( np.sqrt( 2. / ( self.n_labels + self.layout[layer]) ) )
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.truncated_normal([self.layout[(len(self.layout)-1) ], self.n_labels ],stddev=init_stddev), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
+        elif ( init_method == 7): #Initialization according to Xavier, first part of the paper
+            variance = np.sqrt(1/self.layout[layer])
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_uniform([self.layout[(len(self.layout)-1) ], self.n_labels], minval=-variance, maxval=variance), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
+        elif ( init_method == 8): #Initialization according to Xavier, second part of the paper called "normalized initialization"
+            variance = ( np.sqrt(6) / ( np.sqrt(self.n_labels + self.layout[layer]) ) )
+            self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_uniform([self.layout[(len(self.layout)-1) ], self.n_labels], minval=-variance, maxval=variance), name='output-weights') #initialise the weights random with stddev
+            self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
 
     def build(self, optimization_algo, learning_rate, beta = 0, scaledict=None, rangedict=None, decay_steps = None, decay_rate = None, BATCH_NORM=False, dropout_rate=0):
         self.x = tf.placeholder('float',[None, self.n_features])
@@ -205,7 +227,7 @@ class neuralnet:
 
 
         #Methode erweitern damit noch drittes set verwendet wird und trainieren endet wenn error unter stop_error
-    def trainNP(self, trainfeatures, trainlabels, max_epochs, validfeatures = None , validlabels = None, stop_error=None, batch_size=None, RANDOMIZE_DATASET=True, PLOTINTERACTIVE = False, STATS=True ):
+    def trainNP(self, trainfeatures, trainlabels, max_epochs, validfeatures = None , validlabels = None, stop_epochs=0, minEpochEarlyStop=0, batch_size=None, RANDOMIZE_DATASET=True, STATS=True ):
 
         if (self.BATCH_NORM): self.training = True
         if (self.DROPOUT): self.training_droput = True
@@ -221,7 +243,7 @@ class neuralnet:
         else:
             VALIDATION = False
 
-        if ((VALIDATION) & (stop_error != None)):
+        if ((VALIDATION) & (stop_epochs > 0) & (minEpochEarlyStop > 0)):
             STOPCOND = True
         else:
             print("Error! If stop_error is set you must provide a validation set!")
@@ -244,7 +266,6 @@ class neuralnet:
 
             self.best_value = {"value" : 0, "epoch" : 0, 'aad' : 0}
             counter_stopepoch = 0
-            stopepochs = 600
 
 
             for epoch in range(max_epochs):
@@ -268,16 +289,15 @@ class neuralnet:
                         epoch_x = traintemp[i*batch_size : (i+1)*batch_size ,:self.n_features]
                         epoch_y = traintemp[i*batch_size : (i+1)*batch_size ,self.n_features :]
                         _, c, aad = self.sess.run([self.optimizer, self.cost, self.aad], feed_dict = {self.x: epoch_x, self.y: epoch_y})
-                        epoch_loss += c
 
                     if ((traintemp.shape[0] % batch_size) != 0): #iterate over last examples smaller than batch size
                         epoch_x = traintemp[int( (i+1)*batch_size) : ,:self.n_features]
                         epoch_y = traintemp[int( (i+1)*batch_size) : ,self.n_features :]
                         _, c, aad = self.sess.run([self.optimizer, self.cost, self.aad], feed_dict = {self.x: epoch_x, self.y: epoch_y})
-                        epoch_loss += c
 
                     #After last minibatch iteration calculate aad over the whole trainset!
                     aadepc = self.sess.run([self.aad], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})
+                    epoch_loss = self.sess.run([self.cost], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})[0]
                     if (self.USEDECAY):
                         print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess)))
 
@@ -291,14 +311,14 @@ class neuralnet:
 
                         if (epoch == 0):
                             self.best_value['value']=validcost
-                        if (STOPCOND & (epoch > 1000 ) ):
+                        if (STOPCOND & (epoch > minEpochEarlyStop ) ):
                             if ( (self.best_value['value'] - validcost) > 0):
                                 self.saveToDisk(path='./temp/early-stopping')
                                 self.best_value['value'] = validcost
                                 self.best_value['epoch'] = epoch
                                 self.best_value['aad'] = validaad
                                 counter_stopepoch = 0
-                            elif (counter_stopepoch == stopepochs):
+                            elif (counter_stopepoch == stop_epochs):
                                 print('Best cost: ' + str(self.best_value['value']) + ' in epoch: ' + str(self.best_value['epoch']) + ' AAD: ' + str(self.best_value['aad']))
                                 self.restoreFromDisk(path='./temp/early-stopping')
                                 break
@@ -343,7 +363,7 @@ class neuralnet:
 
 
 
-    def trainDF(self, trainsetDF, feature_indices, label_indices, max_epochs, validsetDF = None, batch_size=None, RANDOMIZE_DATASET=True, stop_error=None, PLOTINTERACTIVE=False, STATS=True ):
+    def trainDF(self, trainsetDF, feature_indices, label_indices, max_epochs, validsetDF = None, batch_size=None, RANDOMIZE_DATASET=True, stop_error=None, STATS=True ):
         #Only for compatibility
         if(self.BATCH_NORM): self.training = True
         CONSISTENT_TYPE = (type(trainsetDF).__module__ == 'pandas.core.frame' )
