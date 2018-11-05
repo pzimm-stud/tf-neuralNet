@@ -138,7 +138,7 @@ class neuralnet:
         self.optimization_algo = optimization_algo
         self.beta = beta
 
-        if ( (decay_steps == None) or (decay_rate == None) ):
+        if ( (decay_steps == 0) or (decay_rate == 0) ):
             self.USEDECAY = False
         elif ( ( (decay_steps > 0. ) and (decay_rate > 0.) )):
             self.USEDECAY = True
@@ -245,7 +245,10 @@ class neuralnet:
 
         if ((VALIDATION) & (stop_epochs > 0) & (minEpochEarlyStop > 0)):
             STOPCOND = True
-        else:
+        elif((VALIDATION) & ((stop_epochs == 0) or (minEpochEarlyStop == 0)) ):
+            print("Early Stopping not active, but validation set provided!")
+            STOPCOND = False
+        elif ((VALIDATION == False) & (stop_epochs > 0) & (minEpochEarlyStop > 0)):
             print("Error! If stop_error is set you must provide a validation set!")
             STOPCOND = False
 
@@ -257,7 +260,8 @@ class neuralnet:
             pos = [0]
             lossmon = [0]
             aadmon = [0]
-            learnmon = [0]
+            if(self.USEDECAY):
+                learnmon = [0]
             if (VALIDATION):
                 validlossmon = [0]
                 validaadmon = [0]
@@ -307,7 +311,7 @@ class neuralnet:
                         validcost, validaad = self.sess.run([self.cost, self.aad], feed_dict = {self.x : validfeatures, self.y: validlabels})
                         if (self.BATCH_NORM): self.training = True
                         if (self.DROPOUT): self.training_droput = True
-                        print('Cost in validation set: {:.4f}, current AAD in validation set: {:.2f}'.format(validcost, validaad) )
+                        print('Cost in validation set: {:.4f}, current AAD in validation set (in%): {:.2f}'.format(validcost, validaad) )
 
                         if (epoch == 0):
                             self.best_value['value']=validcost
@@ -318,7 +322,7 @@ class neuralnet:
                                 self.best_value['epoch'] = epoch
                                 self.best_value['aad'] = validaad
                                 counter_stopepoch = 0
-                            elif (counter_stopepoch == stop_epochs):
+                            elif ( (counter_stopepoch == stop_epochs) or (epoch == (max_epochs -1)) ):
                                 print('Best cost: ' + str(self.best_value['value']) + ' in epoch: ' + str(self.best_value['epoch']) + ' AAD: ' + str(self.best_value['aad']))
                                 self.restoreFromDisk(path='./temp/early-stopping')
                                 break
@@ -333,20 +337,22 @@ class neuralnet:
                         pos = [0]
                         lossmon = [epoch_loss]
                         aadmon = [aadepc]
-                        learnmon = [self.learning_rate.eval(session=self.sess)]
+                        if (self.USEDECAY):
+                            learnmon = [self.learning_rate.eval(session=self.sess)]
                         if (VALIDATION):
                             validlossmon = [validcost]
                             validaadmon = [validaad]
                             self.validDNSvsDNNmon = [ [validlabels, self.predictNP(validfeatures)] ]
 
-                    print('Epoch {:.0f} completed out of {:.0f} loss: {:.4f} cost-this-iter: {:.2f} AAD: {:.2f}% AAD-epoch: {:.2f}'.format(epoch+1 ,max_epochs ,epoch_loss ,c ,aad, aadepc[0]) )
+                    print('Epoch {:.0f} completed out of {:.0f} loss/cost: {:.4f} AAD: {:.2f}%'.format(epoch+1 ,max_epochs ,epoch_loss ,aadepc[0]) )
 
                     if((epoch % 5) == 0):
                         zaehl+=5
                         pos.append(zaehl)
                         lossmon.append(epoch_loss)
                         aadmon.append(aadepc)
-                        learnmon.append(self.learning_rate.eval(session=self.sess))
+                        if (self.USEDECAY):
+                            learnmon.append(self.learning_rate.eval(session=self.sess))
                         if (VALIDATION):
                             validlossmon.append(validcost)
                             validaadmon.append(validaad)
@@ -355,7 +361,8 @@ class neuralnet:
 
                     self.lossprint = (pos,lossmon)
                     self.aadprint = (pos,aadmon)
-                    self.learnprint = (pos,learnmon)
+                    if (self.USEDECAY):
+                        self.learnprint = (pos,learnmon)
                     if (VALIDATION):
                         self.validlossprint = (pos,validlossmon)
                         self.validaadprint = (pos,validaadmon)
@@ -382,7 +389,6 @@ class neuralnet:
         if (self.BATCH_NORM): self.training = False
         if (self.DROPOUT): self.training_droput = False
         return self.sess.run([self.cost, self.aad], feed_dict = {self.x : testfeatures, self.y: testlabels} )
-
 
     def predictDF(self, testset, feature_labels):
         if (self.BATCH_NORM): self.training = False
@@ -443,7 +449,7 @@ class neuralnet:
 
     def validLossGraph(self, path, filename='validloss-vs-epochs', label='', logscale=False):
         #assert self.VALIDATION == True
-        plt.plot(self.validlossprin[0], self.validlossprin[1], label=label)
+        plt.plot(self.validlossprint[0], self.validlossprint[1], label=label)
         plt.title('Loss over epochs in validation set')
         if logscale: plt.yscale('log')
         plt.ylabel('Loss')
@@ -486,9 +492,9 @@ class neuralnet:
             plt.plot([pltmin, pltmax], [pltmin, pltmax], color='k', linestyle='-', linewidth=2)
             plt.ylim(ymax = pltmax * 1.01 , ymin = pltmin * 0.99)
             plt.xlim(xmax = pltmax * 1.01 , xmin = pltmin * 0.99)
-        plt.title(title)
-        plt.ylabel(ylabel)
-        plt.xlabel(xlabel)
+        if title is not None: plt.title(title)
+        if ylabel is not None: plt.ylabel(ylabel)
+        if xlabel is not None: plt.xlabel(xlabel)
         plt.legend(loc=loc)
         plt.savefig(fname=(path + '/' + filename))
         plt.gcf().clear()

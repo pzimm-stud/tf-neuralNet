@@ -10,9 +10,9 @@ import os
 import neuralNet_class as neuralNet
 import import_data as prepdata
 
-#To-do:
-#mean and standard deviation as tensor so you can save and restore it. On predicting you can use mean and std.
-#Reihenfolge kommt nur durch die feature und label_indices in config.json ins spiel!
+
+import matplotlib.pyplot as plt
+
 
 parser = argparse.ArgumentParser(description='Train/Restore a neural net and predict values')
 
@@ -39,7 +39,7 @@ parser.add_argument('--validset', dest='path_validset', type=str, nargs=1, defau
 parser.add_argument('--testset', dest='path_testset', type=str, nargs=1, default=None,
                     help='Location of the test dataset, if provided this set gets used for prediction!')
 
-parser.add_argument('--savedir', dest='path_save', type=str, nargs=1, default='./save/ckpt',
+parser.add_argument('--savedir', dest='path_save', type=str, nargs=1, default=['./'],
                     help='Location from/to where to load/save the model checkpoint')
 
 parser.add_argument('--config', dest='path_config', type=str, nargs=1, default='./config.json',
@@ -47,7 +47,7 @@ parser.add_argument('--config', dest='path_config', type=str, nargs=1, default='
 
 
 
-parser.add_argument('--frac', dest='frac', type=float, nargs=1, default=0.8,
+parser.add_argument('--frac', dest='frac', type=float, nargs=1, default=[0.8],
                     help='Fraction for splitting test and validset out of trainset')
 
 
@@ -156,9 +156,16 @@ if ( not(args.train) and (args.predict) and not(args.preprocess)):
         i+=1
 
 #Just train and save the neural network (preproccessing has to be done to train!)
-if (args.train and not(args.predict) ):
+if (args.train and not(args.predict) and not(args.preprocess)):
+    #Test, if we want to do graphing:
+    GRAPHDICT = {'Training' : False, 'Validation' : False, 'Testing' : False}
+    #Flags for the performance measures
+    PERFDICT = {'Training' : True, 'Validation' : False, 'Testing' : False}
+    if args.graphstats:
+        GRAPHDICT['Training'] = True
     #If we give a trainset:
-    if args.path_validset is not None:
+    #Note: if no trainset is give args.path_trainset is of type None! else it is a list of length 1!!!
+    if args.path_trainset is not None:
         trainset_temp = pd.read_excel(args.path_trainset[0])
         #calculate mean and std
         mean = trainset_temp[colnames_features].mean()
@@ -173,7 +180,10 @@ if (args.train and not(args.predict) ):
         #Save the scales in order to pass it to the neuralNet
         scaledict = {'mean' : mean.values, 'stddev' : std.values, 'max' : None, 'min' : None}
         #Check, if a validset is given:
-        if args.path_validset[0] is not None:
+        if args.path_validset is not None:
+            if args.graphstats:
+                GRAPHDICT['Validation'] = True
+            PERFDICT['Validation'] = True
             validset_temp = pd.read_excel(args.path_validset[0])
             #Scale the validset:
             validset_temp[colnames_features] = ( validset_temp[colnames_features] - mean) / std
@@ -186,8 +196,27 @@ if (args.train and not(args.predict) ):
 
     else:
         dataset = pd.read_excel(args.Dataset)
-        if (args.trainTestValidSplit): #Test in which sets well split.
-            trainset, testset, validset, mean, std = prepdata.PrepareDF(dataset, colnames_features, colnames_labels, frac=args.frac, scaleStandard = True, scaleMinMax=False, testTrainSplit = (not (args.trainTestValidSplit)), testTrainValidSplit = args.trainTestValidSplit)
+        #If we just want to train on the given dataset (no valid- or testset)
+        if (args.frac[0] == 1):
+            #calculate mean and std
+            mean = dataset[colnames_features].mean()
+            std = dataset[colnames_features].std()
+            #Save the range of the features in order to print a warning in case of training
+            rangedict = {'min' : dataset[colnames_features].min().values, 'max' : dataset[colnames_features].max().values, 'feature-names' : colnames_features }
+            #Scale the trainset:
+            dataset[colnames_features] = (dataset[colnames_features] - mean) / std
+            #Convert the set to numpy arrays for training:
+            trainfeatures = dataset[colnames_features].values
+            trainlabels = dataset[colnames_labels].values
+            #Save the scales in order to pass it to the neuralNet
+            scaledict = {'mean' : mean.values, 'stddev' : std.values, 'max' : None, 'min' : None}
+            validfeatures = None
+            validlabels = None
+            testfeatures = None
+            testlabels = None
+
+        elif (args.trainTestValidSplit): #Test in which sets well split.
+            trainset, testset, validset, mean, std = prepdata.PrepareDF(dataset, colnames_features, colnames_labels, frac=args.frac[0], scaleStandard = True, scaleMinMax=False, testTrainSplit = (not (args.trainTestValidSplit)), testTrainValidSplit = args.trainTestValidSplit)
             trainfeatures = trainset[colnames_features].values
             trainlabels = trainset[colnames_labels].values
             validfeatures = validset[colnames_features].values
@@ -195,8 +224,13 @@ if (args.train and not(args.predict) ):
             testfeatures = testset[colnames_features].values
             testlabels = testset[colnames_labels].values
             rangedict = {'min' : (trainset[colnames_features] * std + mean).min().values, 'max' : (trainset[colnames_features] * std + mean).max().values, 'feature-names' : colnames_features }
+            if args.graphstats:
+                GRAPHDICT['Validation'] = True
+                GRAPHDICT['Testing'] = True
+            PERFDICT['Validation'] = True
+            PERFDICT['Testing'] = True
         else:
-            trainset, testset, mean, std = prepdata.PrepareDF(dataset, colnames_features, colnames_labels, frac=args.frac, scaleStandard = True, scaleMinMax=False, testTrainSplit = (not (args.trainTestValidSplit)), testTrainValidSplit = args.trainTestValidSplit)
+            trainset, testset, mean, std = prepdata.PrepareDF(dataset, colnames_features, colnames_labels, frac=args.frac[0], scaleStandard = True, scaleMinMax=False, testTrainSplit = (not (args.trainTestValidSplit)), testTrainValidSplit = args.trainTestValidSplit)
             trainfeatures = trainset[colnames_features].values
             trainlabels = trainset[colnames_labels].values
             testfeatures = testset[colnames_features].values
@@ -204,6 +238,9 @@ if (args.train and not(args.predict) ):
             validfeatures = None
             validlabels = None
             rangedict = {'min' : (trainset[colnames_features] * std + mean).min().values, 'max' : (trainset[colnames_features] * std + mean).max().values, 'feature-names' : colnames_features }
+            if args.graphstats:
+                GRAPHDICT['Testing'] = True
+            PERFDICT['Testing'] = True
         #Convert the sets to numpy arrays for training:
 
 
@@ -218,10 +255,74 @@ if (args.train and not(args.predict) ):
     Net.trainNP(trainfeatures=trainfeatures, trainlabels=trainlabels, max_epochs=max_epochs, validfeatures = validfeatures , validlabels = validlabels, stop_epochs=stop_epochs, minEpochEarlyStop=minEpochEarlyStop, batch_size=batch_size, RANDOMIZE_DATASET=True, STATS=True)
 
     #Make sure the path exists:
-    #if not os.path.exists():
-    #    os.makedirs(directory)
-    Net.saveToDisk(path='./savecheckpoint')
+    if not os.path.exists(args.path_save[0]):
+        os.makedirs(args.path_save[0])
+    Net.saveToDisk(path= (args.path_save[0] + 'savecheckpoint') )
+
+    #Print the AAD and MSE Values on the different sets (if provided)
+    if PERFDICT['Training']:
+        print('Performance on the training set [MSE, AAD in %]: ' + str(Net.predictNPMSE(trainfeatures, trainlabels)))
+    if PERFDICT['Validation']:
+        print('Performance on the validation set [MSE, AAD in %]: ' + str(Net.predictNPMSE(validfeatures, validlabels)))
+    if PERFDICT['Testing']:
+        print('Performance on the test set [MSE, AAD in %]: ' + str(Net.predictNPMSE(testfeatures, testlabels)))
 
     #Do some of the graphing stuff here:
+    if args.graphstats:
+        #Create folder for graphs:
+        if not os.path.exists('./graphs'):
+            os.makedirs('./graphs')
+    if GRAPHDICT['Training']:
+        #Create folder for training graphs:
+        if not os.path.exists('./graphs/training'):
+            os.makedirs('./graphs/training')
+        #Graph the training set
+        Net.trainLossGraph(path='./graphs/training', label='Trainset', logscale=False)
+        Net.trainAADGraph(path='./graphs/training',  label='Trainset', ymax=5)
+        if (Net.USEDECAY):
+            Net.learningRateGraph(path='./graphs/training', label='Testlabel', logscale=False)
+
+        #train_bulkspec_enthalpy =
+        #xvals= ( sco2_train_bulkspec_enthalpy, sco2_train_bulkspec_enthalpy )
+        #yvals= (sco2_trainset_predictions, trainset[sco2_label_indices].values )
+        #cntrl= ( {'color' : 'red', 'edgecolor': 'black', 'marker' : '^', 'label': 'predictions'}, {'color' : 'blue', 'edgecolor': 'black', 'marker' : 'o', 'label': 'labels'} )
+        #water_nn.scatterGraph(path=directory, xvals=xvals , yvals=yvals, cntrl=cntrl, filename='tst-train-walltemp-dns-vs-dnn', title='Walltemperature DNS vs DNN over hbulk in trainset', DIAGLINE=False ) #, ylim=ylim, xlim=xlim)
+
+    if GRAPHDICT['Validation']:
+        #Create folder for training graphs:
+        if not os.path.exists('./graphs/validation'):
+            os.makedirs('./graphs/validation')
+        #Graph the validation set
+        Net.validLossGraph(path='./graphs/validation', label='Validset', logscale=False)
+        Net.validAADGraph(path='./graphs/validation',  label='Validset', ymax=5)
+
+
+        plt.plot(Net.lossprint[0], Net.lossprint[1], label='Trainset')
+        plt.plot(Net.validlossprint[0], Net.validlossprint[1], label='Validset')
+        plt.ylim(ymax=10, ymin=0)
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(loc='best')
+        plt.savefig(fname='./graphs/loss.png')
+        plt.gcf().clear()
+        plt.close()
+
+        plt.plot(Net.aadprint[0], Net.aadprint[1], label='Trainset')
+        plt.plot(Net.validaadprint[0], Net.validaadprint[1], label='Validset')
+        plt.ylim(ymax=1, ymin=0)
+        plt.ylabel('AAD in %')
+        plt.xlabel('Epoch')
+        plt.legend(loc='best')
+        plt.savefig(fname='./graphs/aad.png')
+        plt.gcf().clear()
+        plt.close()
+
+    if GRAPHDICT['Testing']:
+        #Create folder for training graphs:
+        if not os.path.exists('./graphs/test'):
+            os.makedirs('./graphs/test')
+
+    #Close session
+    Net.closeSession()
 
 #Performance measure? give testset and checkpoint or train and testset and return mse or aad
