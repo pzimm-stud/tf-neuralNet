@@ -13,6 +13,10 @@ import import_data as prepdata
 
 import matplotlib.pyplot as plt
 
+#Test if tensorflow-gpu runs with cpu only
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
+import logging
 
 parser = argparse.ArgumentParser(description='Train/Restore a neural net and predict values')
 
@@ -193,6 +197,15 @@ if (args.train and not(args.predict) and not(args.preprocess)):
         else:
             validfeatures = None
             validlabels = None
+        #Check, if a testset is given (To calculate MSE at the end):
+        if args.path_testset is not None:
+            PERFDICT['Testing'] = True
+            testset_temp = pd.read_excel(args.path_testset[0])
+            #Scale the testset:
+            testset_temp[colnames_features] = (testset_temp[colnames_features] - mean) / std
+            #Convert the set to numpy arrays for training:
+            testfeatures = testset_temp[colnames_features].values
+            testlabels = testset_temp[colnames_labels].values
 
     else:
         dataset = pd.read_excel(args.Dataset)
@@ -299,7 +312,7 @@ if (args.train and not(args.predict) and not(args.preprocess)):
 
         plt.plot(Net.lossprint[0], Net.lossprint[1], label='Trainset')
         plt.plot(Net.validlossprint[0], Net.validlossprint[1], label='Validset')
-        plt.ylim(ymax=10, ymin=0)
+        plt.ylim(top=10, bottom=0)
         plt.ylabel('Loss')
         plt.xlabel('Epoch')
         plt.legend(loc='best')
@@ -309,7 +322,7 @@ if (args.train and not(args.predict) and not(args.preprocess)):
 
         plt.plot(Net.aadprint[0], Net.aadprint[1], label='Trainset')
         plt.plot(Net.validaadprint[0], Net.validaadprint[1], label='Validset')
-        plt.ylim(ymax=1, ymin=0)
+        plt.ylim(top=1, bottom=0)
         plt.ylabel('AAD in %')
         plt.xlabel('Epoch')
         plt.legend(loc='best')
@@ -324,5 +337,3 @@ if (args.train and not(args.predict) and not(args.preprocess)):
 
     #Close session
     Net.closeSession()
-
-#Performance measure? give testset and checkpoint or train and testset and return mse or aad
