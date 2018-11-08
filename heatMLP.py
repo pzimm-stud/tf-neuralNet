@@ -13,8 +13,8 @@ import import_data as prepdata
 
 import matplotlib.pyplot as plt
 
-#Test if tensorflow-gpu runs with cpu only
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#Set the following to train on the CPU (if you have tensorflow-gpu installed)
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import logging
 
@@ -46,7 +46,7 @@ parser.add_argument('--testset', dest='path_testset', type=str, nargs=1, default
 parser.add_argument('--savedir', dest='path_save', type=str, nargs=1, default=['./'],
                     help='Location from/to where to load/save the model checkpoint')
 
-parser.add_argument('--config', dest='path_config', type=str, nargs=1, default='./config.json',
+parser.add_argument('--config', dest='path_config', type=str, nargs=1, default=['./config.json'],
                     help='Location of the model configuration file')
 
 
@@ -72,7 +72,7 @@ if not ( args.train or args.predict or args.preprocess):
 
 
 #Decode the config.json file and create the net layout and parameters:
-with open(args.path_config, 'r') as configfile:
+with open(args.path_config[0], 'r') as configfile:
     config_data = json.load(configfile)
 
 n_features = config_data['n_features']
@@ -110,11 +110,18 @@ for temp_optimizer in trans_opti:
 #If we just want to preprocess some Data:
 if ( not(args.train) and not(args.predict) and args.preprocess ):
     dataset = pd.read_excel(args.Dataset)
-    sets = prepdata.PrepareDF(dataset, colnames_features, colnames_labels, frac=args.frac, scaleStandard = False, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
-    writer_arr = ( pd.ExcelWriter(('./trainset.xlsx')), pd.ExcelWriter(('./validset.xlsx')), pd.ExcelWriter(('./testset.xlsx')) )
-    for setposition in range( len( writer_arr )):
-        sets[setposition].to_excel(writer_arr[setposition])
-        writer_arr[setposition].save()
+    if (args.trainTestValidSplit):
+        sets = prepdata.PrepareDF(dataset, colnames_features, colnames_labels, frac=args.frac[0], scaleStandard = False, scaleMinMax=False, testTrainSplit = False, testTrainValidSplit = True)
+        writer_arr = ( pd.ExcelWriter(('./trainset.xlsx')), pd.ExcelWriter(('./validset.xlsx')), pd.ExcelWriter(('./testset.xlsx')) )
+        for setposition in range( len( writer_arr )):
+            sets[setposition].to_excel(writer_arr[setposition])
+            writer_arr[setposition].save()
+    else:
+        sets = prepdata.PrepareDF(dataset, colnames_features, colnames_labels, frac=args.frac[0], scaleStandard = False, scaleMinMax=False, testTrainSplit = True, testTrainValidSplit = False)
+        writer_arr = ( pd.ExcelWriter(('./trainset.xlsx')), pd.ExcelWriter(('./testset.xlsx')) )
+        for setposition in range( len( writer_arr )):
+            sets[setposition].to_excel(writer_arr[setposition])
+            writer_arr[setposition].save()
 
 #If we just want to predict some values based on a checkpoint (we should be sure to provide either dataset or testset):
 if ( not(args.train) and (args.predict) and not(args.preprocess)):
