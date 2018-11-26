@@ -124,7 +124,7 @@ class neuralnet:
             self.layerdict[ 'output-weights' ] = tf.Variable(tf.random_uniform([self.layout[(len(self.layout)-1) ], self.n_labels], minval=-variance, maxval=variance), name='output-weights') #initialise the weights random with stddev
             self.layerdict[ 'output-biases' ] = tf.Variable(tf.constant(0.0, shape=[self.n_labels]), name='output-bias') #initialise the bias as constant near zer
 
-    def build(self, optimization_algo, learning_rate, beta = 0, scaledict=None, rangedict=None, decay_steps = None, decay_rate = None, BATCH_NORM=False, dropout_rate=0):
+    def build(self, optimization_algo, learning_rate, beta = 0, scaledict=None, rangedict=None, labelScaleDict = None, decay_steps = None, decay_rate = None, BATCH_NORM=False, dropout_rate=0):
         self.x = tf.placeholder('float',[None, self.n_features])
         self.y = tf.placeholder('float',[None, self.n_labels])
         self.BATCH_NORM = BATCH_NORM
@@ -178,6 +178,20 @@ class neuralnet:
              self.rangemin = tf.Variable( tf.constant(0., shape=[self.n_features], dtype=tf.float32) , name='rangemin')
              self.rangenames = tf.Variable( tf.constant('Null', shape=[self.n_features], dtype=tf.string) , name='rangenames')
 
+        #Save the scales of the labels (if n_labels >1):
+        if ( labelScaleDict is not None):
+            self.labelmax = tf.Variable( tf.convert_to_tensor(labelScaleDict['max'], dtype=tf.float32) , trainable=False, name='labelmax')
+            self.labelmin = tf.Variable( tf.convert_to_tensor(labelScaleDict['min'], dtype=tf.float32) , trainable=False, name='labelmin')
+            #scaleTemp = []
+            #for tempPos in range( len(labelScaleDict['max'])):
+            #    scaleTemp.append( (labelScaleDict['max'][0] - labelScaleDict['min'][0]) / (labelScaleDict['max'][tempPos] - labelScaleDict['min'][tempPos]) )
+            #self.costScaleTensor = tf.stop_gradient( tf.Variable( tf.convert_to_tensor( [scaleTemp], dtype=tf.float32), trainable=False, name='costScaleTensor') )
+        else:
+            self.labelmax = tf.Variable( tf.constant(0.0, shape=[self.n_labels], dtype=tf.float32) , trainable=False, name='labelmax')
+            self.labelmin = tf.Variable( tf.constant(0.0, shape=[self.n_labels], dtype=tf.float32) , trainable=False, name='labelmin')
+            #self.costScaleTensor = tf.Variable( tf.constant( 0.0, shape=[self.n_labels], dtype=tf.float32) , trainable=False, name='costScaleTensor')
+
+
     def layeroperations(self):
         templayer = []
         for layernum in range(len(self.layout)):
@@ -208,6 +222,9 @@ class neuralnet:
         self.prediction = tf.add(tf.matmul(templayer[layernum], self.layerdict['output-weights']), self.layerdict['output-biases'])
 
         self.cost = tf.reduce_mean(tf.pow((self.prediction-self.y),2)) #also possible: tf.square(self.prediction-self.y)
+        #Is tf-squared_difference faster than this?
+        #self.cost = tf.reduce_mean(tf.pow( tf.matmul( ( self.prediction - self.y), self.costScaleTensor, transpose_b=True ),2))
+        #self.cost = tf.losses.compute_weighted_loss(tf.pow( (self.prediction - self.y), 2), weights= tf.pow( (self.costScaleTensor), 2) , reduction='weighted_sum_by_nonzero_weights' )
         self.regularizer = 0
         for layer in range(len(self.layout)):
             self.regularizer += tf.nn.l2_loss( self.layerdict[ ('hi-lay-' + str(layer+1) + '-weights' ) ] )
@@ -302,6 +319,8 @@ class neuralnet:
                     #After last minibatch iteration calculate aad over the whole trainset!
                     aadepc = self.sess.run([self.aad], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})
                     epoch_loss = self.sess.run([self.cost], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})[0]
+                    #print('CostTensor: '  + str( self.sess.run([self.cost], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})[0]))
+                    #print('ScaleTensor: ' + str( self.sess.run([self.costScaleTensor], feed_dict = {self.x : traintemp[:,:self.n_features], self.y: traintemp[:,self.n_features:]})[0]))
                     if (self.USEDECAY):
                         print('current learning rate: ' + str(self.learning_rate.eval(session=self.sess)))
 

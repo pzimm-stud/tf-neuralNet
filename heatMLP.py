@@ -75,8 +75,6 @@ if not ( args.train or args.predict or args.preprocess):
 with open(args.path_config[0], 'r') as configfile:
     config_data = json.load(configfile)
 
-n_features = config_data['n_features']
-n_labels = config_data['n_labels']
 layout = config_data['layout']
 batch_size = config_data['batch_size']
 beta = config_data['beta']
@@ -92,6 +90,8 @@ colnames_features = config_data['colnames_features']
 colnames_labels = config_data['colnames_labels']
 stop_epochs = config_data['stop_epochs']
 minEpochEarlyStop = config_data['min_Epoch_Early_Stop']
+n_features = len(colnames_features)
+n_labels = len(colnames_labels)
 
 #Generate actfunct and optimization algo:
 trans_act = {'sigmoid' : tf.nn.sigmoid, 'softmax' : tf.nn.softmax, 'relu': tf.nn.relu, 'tanh' : tf.nn.tanh, 'elu': tf.nn.elu}
@@ -134,14 +134,14 @@ if ( not(args.train) and (args.predict) and not(args.preprocess)):
         #Just use the defined columns and look out for N/A values. Convert it to numpy array
         input_set = input_set[colnames_features].dropna().values
 
-    #Build neuralnet and load the checkpoint (Known Bug: network has to be exact the same, otherwise the restore does not work. Maybe just restore weights and biases in a future version!)
+    #Build neuralnet and load the checkpoint. Restoring only works with the same configuration!
     Net = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
     Net.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = BATCH_NORM, dropout_rate=dropout_rate)
     Net.initialize(init_method = init_method, init_stddev = init_stddev)
     Net.layeroperations()
     Net.initializeSession()
-    #Net.restoreFromDisk(path=args.path_save)
-    Net.restoreFromDisk(path='./savecheckpoint')
+    Net.restoreFromDisk(args.path_save[0] + 'savecheckpoint')
+    #Net.restoreFromDisk(path='./savecheckpoint')
 
     #Scale the features according to the saved state
     if ( ( Net.meantensor.eval(session=Net.sess)[0] == 0 ) and ( Net.stdtensor.eval(session=Net.sess)[0] == 0 ) ):
@@ -155,6 +155,11 @@ if ( not(args.train) and (args.predict) and not(args.preprocess)):
         for i in range( n_features):
             input_set[:,i] = ( input_set[:,i] - Net.meantensor.eval(session=Net.sess)[i] ) / Net.stdtensor.eval(session=Net.sess)[i]
     predictions = Net.predictNP(input_set)
+    #Scale the labels back, if n_labels greater 1:
+    if ( n_labels > 1 ):
+        for TempPos in range(1, n_labels):
+            scale = ( Net.labelmax.eval(session=Net.sess)[0] - Net.labelmin.eval(session=Net.sess)[0] ) / ( Net.labelmax.eval(session=Net.sess)[TempPos] - Net.labelmin.eval(session=Net.sess)[TempPos] )
+            predictions[:,TempPos] = ( predictions[:,TempPos] - ( Net.labelmax.eval(session=Net.sess)[0] - (Net.labelmax.eval(session=Net.sess)[TempPos] * scale) ) ) / scale
     predictionWriter = pd.ExcelWriter(path='./predictions.xlsx')
 
     pd.DataFrame(predictions, columns=colnames_labels).to_excel(predictionWriter, index=False)
@@ -213,6 +218,9 @@ if (args.train and not(args.predict) and not(args.preprocess)):
             #Convert the set to numpy arrays for training:
             testfeatures = testset_temp[colnames_features].values
             testlabels = testset_temp[colnames_labels].values
+        else:
+            testfeatures = None
+            testlabels = None
 
     else:
         dataset = pd.read_excel(args.Dataset)
@@ -266,9 +274,26 @@ if (args.train and not(args.predict) and not(args.preprocess)):
 
     #Save the scales in order to pass it to the neuralNet
     scaledict = {'mean' : mean.values, 'stddev' : std.values, 'max' : None, 'min' : None}
+    #If more than one label is provided, pass the scaling compared to the first label to the cost function:
+    if (n_labels > 1):
+        #Get min and max for all labels
+        costmin = []
+        costmax = []
+        for pos in range(n_labels):
+            costmin.append( np.min(trainlabels[:,pos]) )
+            costmax.append( np.max(trainlabels[:,pos]) )
+        #Scale the labels here, pass them to build in order to save the scales in the checkpoint:
+        scaledict_labels = {'min': costmin, 'max' : costmax}
+        for TempPos in range(1, n_labels):
+            scale = ( scaledict_labels['max'][0] - scaledict_labels['min'][0] ) / ( scaledict_labels['max'][TempPos] - scaledict_labels['min'][TempPos] )
+            trainlabels[:,TempPos] = trainlabels[:,TempPos] * scale  + ( scaledict_labels['max'][0] - ( scaledict_labels['max'][TempPos] * scale ) )
+            if validlabels is not None: validlabels[:,TempPos] = validlabels[:,TempPos] * scale  + ( scaledict_labels['max'][0] - ( scaledict_labels['max'][TempPos] * scale ) )
+            if testlabels is not None: testlabels[:,TempPos] = testlabels[:,TempPos] * scale  + ( scaledict_labels['max'][0] - ( scaledict_labels['max'][TempPos] * scale ) )
+    else:
+        scaledict_labels = None
     #Build the neuralNet and start training:
     Net = neuralNet.neuralnet(n_features=n_features, n_labels=n_labels, layout=layout, actfunct=actfunct)
-    Net.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, scaledict=scaledict, rangedict=rangedict, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = BATCH_NORM, dropout_rate=dropout_rate)
+    Net.build(optimization_algo=optimization_algo, learning_rate=learning_rate, beta=beta, scaledict=scaledict, rangedict=rangedict, labelScaleDict=scaledict_labels, decay_steps = decay_steps, decay_rate = decay_rate, BATCH_NORM = BATCH_NORM, dropout_rate=dropout_rate)
     Net.initialize(init_method = init_method, init_stddev = init_stddev)
     Net.layeroperations()
     Net.initializeSession()

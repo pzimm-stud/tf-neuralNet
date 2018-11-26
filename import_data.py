@@ -30,10 +30,10 @@ def PrepareDF(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
         max = trainset[feature_indices].max()
     if (scaleMinMax & (not(scaleStandard)) ):
         #Rescale the feature indices to Range(min,max)
-        trainset[feature_indices] = (trainset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
-        testset[feature_indices] = (testset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
+        trainset[feature_indices] = trainset[feature_indices] * ((Range['max'] -Range['min'] )/( max - min ))  + ( Range['max'] - max * ((Range['max'] -Range['min'] )/( max - min )) )
+        testset[feature_indices] = testset[feature_indices] * ((Range['max'] -Range['min'] )/( max - min ))  + ( Range['max'] - max * ((Range['max'] -Range['min'] )/( max - min )) )
         if(testTrainValidSplit):
-            validset[feature_indices] = (validset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
+            validset[feature_indices] = validset[feature_indices] * ((Range['max'] -Range['min'] )/( max - min ))  + ( Range['max'] - max * ((Range['max'] -Range['min'] )/( max - min )) )
             return trainset,testset,validset,min,max
         else:
             return trainset,testset,min,max
@@ -102,10 +102,10 @@ def PrepareNP(dataDF, feature_indices, label_indices, frac, scaleStandard = Fals
         max = trainset[feature_indices].max()
     if (scaleMinMax & (not(scaleStandard)) ):
         #Rescale the feature indices to Range(min,max)
-        trainset[feature_indices] = (trainset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
-        testset[feature_indices] = (testset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
+        trainset[feature_indices] = trainset[feature_indices] * ((Range['max'] -Range['min'] )/( max - min ))  + ( Range['max'] - max * ((Range['max'] -Range['min'] )/( max - min )) )
+        testset[feature_indices] = testset[feature_indices] * ((Range['max'] -Range['min'] )/( max - min ))  + ( Range['max'] - max * ((Range['max'] -Range['min'] )/( max - min )) )
         if(testTrainValidSplit):
-            validset[feature_indices] = (validset[feature_indices] - min )* ((Range['max'] -Range['min'] )/( max - min ))  + Range['min']
+            validset[feature_indices] = validset[feature_indices] * ((Range['max'] -Range['min'] )/( max - min ))  + ( Range['max'] - max * ((Range['max'] -Range['min'] )/( max - min )) )
             return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, validset[feature_indices].values, validset[label_indices].values, min.values, max.values
         else:
             return trainset[feature_indices].values, trainset[label_indices].values, testset[feature_indices].values, testset[feature_indices].values, min.values, max.values
