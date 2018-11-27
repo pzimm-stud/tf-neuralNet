@@ -14,7 +14,7 @@ import import_data as prepdata
 import matplotlib.pyplot as plt
 
 #Set the following to train on the CPU (if you have tensorflow-gpu installed)
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import logging
 
